@@ -1,17 +1,38 @@
 # Tiny Whisper Tester
 
-A Flutter Android application for testing different fine-tuned Whisper Tiny models for offline speech-to-text transcription on mobile devices. Users can download GGML models from HuggingFace URLs and test them with microphone input.
+A comprehensive Flutter Android application for speech-to-text transcription, translation, and summarization with on-device AI capabilities. Test different Whisper models, translate speech in real-time, and summarize conversations using local LLMs.
 
-## Features
+## ✨ Features
 
-- **🎤 Live Speech Recognition**: Real-time speech-to-text using device's built-in engine
-- **📊 Voice Spectrogram**: Real-time audio visualization with waveform and frequency bars
-- **🔧 Smart Permission Handling**: Automatic permission requests with settings navigation
-- **📁 Model Management**: Download, replace, and delete models with a built-in UI
-- **🔄 Hybrid Support**: Framework ready for both live and offline recognition
-- **📡 HuggingFace Integration**: Direct download from HuggingFace model repositories  
-- **🌍 Multi-language Support**: Supports all languages available on your device
-- **⚡ Production Ready**: Full error handling, user guidance, and robust implementation
+### 🎤 **Speech Recognition**
+- **Live Speech Recognition**: Real-time speech-to-text using device's built-in engine
+- **Multi-language Support**: Supports 50+ languages with automatic detection
+- **Continuous Listening**: Stream audio processing with real-time results
+
+### 🌍 **Translation**
+- **Offline Translation**: Google ML Kit powered translation for 50+ languages  
+- **Auto Language Detection**: Automatically identifies spoken language
+- **Dual Display**: Shows both original and translated text side-by-side
+- **Smart Model Management**: Downloads translation models on-demand
+
+### 🤖 **On-Device Summarization**
+- **Local LLM Processing**: Gemma-2B/7B models for text summarization
+- **Privacy-First**: All summarization happens on-device
+- **Multiple Models**: Choose from Gemma 2B, 7B, or Gemini Nano
+- **Custom Settings**: Adjustable summary length and model parameters
+
+### 🎨 **Modern UI/UX**
+- **Material Design 3**: Native Android look and feel
+- **Dark/Light Mode**: Automatic theme switching based on system preferences
+- **Smooth Animations**: Polished transitions and micro-interactions
+- **Intuitive Navigation**: Tab-based interface with clear organization
+
+### 🔧 **Advanced Features**
+- **Smart Permission Handling**: Guided permission requests with settings navigation
+- **Model Management**: Download, replace, and delete models with progress tracking
+- **HuggingFace Integration**: Direct download from HuggingFace model repositories
+- **Offline-First**: Works completely offline after initial setup
+- **Production Ready**: Comprehensive error handling and user guidance
 
 ## Installation
 
@@ -37,38 +58,50 @@ flutter build apk --release
 flutter install
 ```
 
-## Usage
+## 🚀 Usage
 
-### 1. Download Models
-- Open the app and tap the "Model Management" section
-- Paste a HuggingFace model URL (see supported models below)
-- Tap "Download" and wait for the model to download
-- The app will automatically detect the model format (GGML/GGUF/PyTorch)
+The app features a clean tab-based interface with three main sections:
 
-### 2. Manual Model Installation
-If you have models downloaded locally, you can manually place them in the app's directory:
+### **🎤 Speech Tab**
+The main interface for speech recognition and processing:
 
-**Android Path**: `/storage/emulated/0/Android/data/com.example.tiny_whisper_tester/files/models/`
+1. **Language Selection**: Choose your language or use "Auto-detect"
+2. **Start Recording**: Tap the recording button to begin live speech recognition
+3. **Real-time Results**: See transcription appear as you speak
+4. **Automatic Translation**: Non-English text is automatically translated to English
+5. **Summarization**: Use the "Summarize" button to create concise summaries
 
-**Steps**:
-1. Connect your Android device to a computer via USB
-2. Enable USB file transfer mode
-3. Navigate to the app's models directory (create it if it doesn't exist)
-4. Copy your model files (.bin, .gguf, or .ptl) to this directory
-5. Restart the app - models should appear in the Model Management section
+### **📁 Models Tab**
+Manage Whisper models for offline speech recognition:
 
-**Supported file formats**:
-- `.bin` - GGML format from whisper.cpp
-- `.gguf` - GGUF format (newer whisper.cpp format)  
-- `.ptl` - PyTorch Lite format
-- `pytorch_model.bin` - Standard PyTorch format
+1. **Download Models**: Paste HuggingFace URLs and download Whisper models
+2. **Model Selection**: Choose between different model sizes and languages
+3. **Progress Tracking**: Monitor download progress with visual indicators
+4. **Model Replacement**: Replace existing models with newer versions
 
-### 3. Record and Transcribe
-1. Select a downloaded model from the dropdown
-2. Tap "Start Recording" and speak clearly
-3. Tap "Stop Recording" when finished
-4. Wait for the transcription result to appear
-5. View the transcribed text and accuracy metrics
+### **🌍 Languages Tab** 
+Manage translation language models:
+
+1. **Browse Languages**: View all 50+ supported translation languages
+2. **Download Models**: One-click download of language packs
+3. **Model Status**: See which languages are ready for offline translation
+4. **Storage Management**: Delete unused language models to save space
+
+### **⚙️ Settings Tab**
+Configure summarization models and app preferences:
+
+1. **Summarization Models**: Download Gemma 2B, 7B, or Gemini Nano models
+2. **Model Selection**: Choose your preferred summarization model
+3. **Summary Settings**: Adjust summary length and generation parameters
+4. **Storage Info**: Monitor model storage usage and free up space
+
+## 📖 Quick Start Guide
+
+1. **Grant Permissions**: Allow microphone and storage access when prompted
+2. **Download Translation Models**: Go to Languages tab, download models for your languages
+3. **Download Summarization Model**: Go to Settings tab, download Gemma-2B (recommended)
+4. **Start Recording**: Go to Speech tab, tap "Start Listening" and speak
+5. **View Results**: See transcription, translation, and use "Summarize" for key points
 
 ## Supported Models
 

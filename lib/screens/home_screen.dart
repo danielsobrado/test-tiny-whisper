@@ -6,7 +6,8 @@ import '../widgets/model_download_widget.dart';
 import '../widgets/model_management_widget.dart';
 import '../widgets/audio_recorder_widget.dart';
 import '../widgets/transcription_display_widget.dart';
-import '../widgets/audio_visualizer_widget.dart';
+import '../widgets/language_management_widget.dart';
+import '../widgets/summarization_settings_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,7 +16,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   final AudioService _audioService = AudioService();
   final WhisperService _whisperService = WhisperService();
   
@@ -28,12 +29,28 @@ class _HomeScreenState extends State<HomeScreen> {
   double _currentSoundLevel = 0.0;
   List<String> _supportedLanguages = [];
   final GlobalKey _downloadWidgetKey = GlobalKey();
+  
+  late TabController _tabController;
+  int _currentTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() {
+      setState(() {
+        _currentTabIndex = _tabController.index;
+      });
+    });
     _requestPermissions();
     _loadSupportedLanguages();
+  }
+  
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _audioService.dispose();
+    super.dispose();
   }
   
   Future<void> _loadSupportedLanguages() async {
@@ -213,6 +230,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _onLanguageDetected(String? detectedLanguageCode) {
+    if (detectedLanguageCode != null && 
+        _supportedLanguages.contains(detectedLanguageCode) && 
+        detectedLanguageCode != _selectedLanguage) {
+      setState(() {
+        _selectedLanguage = detectedLanguageCode;
+      });
+      _showSnackBar('Language auto-updated to: ${detectedLanguageCode.toUpperCase()}');
+    }
+  }
+
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -223,19 +251,194 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('Tiny Whisper Tester'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.mic_rounded), text: 'Speech'),
+            Tab(icon: Icon(Icons.storage_rounded), text: 'Models'),
+            Tab(icon: Icon(Icons.translate_rounded), text: 'Languages'),
+            Tab(icon: Icon(Icons.settings_rounded), text: 'Settings'),
+          ],
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildSpeechTab(),
+          _buildModelsTab(),
+          _buildLanguagesTab(),
+          _buildSettingsTab(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpeechTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Current Model Status & Language Selection
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.settings_rounded,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Current Model',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: _whisperService.getModelInfo(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          final info = snapshot.data!;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _currentModelPath ?? 'No model file selected',
+                                style: TextStyle(
+                                  color: _currentModelPath != null ? Colors.green : Colors.grey,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                info['framework'] ?? 'Using device speech recognition',
+                                style: const TextStyle(
+                                  color: Colors.blue,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              if (_currentModelPath != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Status: ${info['status'] ?? 'Unknown'}',
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          );
+                        } else {
+                          return const Text(
+                            'Using device speech recognition (no model file needed)',
+                            style: TextStyle(
+                              color: Colors.blue,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.language_rounded,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Language',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedLanguage,
+                      decoration: const InputDecoration(
+                        hintText: 'Select language',
+                      ),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('Auto-detect'),
+                        ),
+                        ..._supportedLanguages.map((String language) {
+                          return DropdownMenuItem<String>(
+                            value: language,
+                            child: Text(language.toUpperCase()),
+                          );
+                        }),
+                      ],
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedLanguage = newValue;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Audio Recording Section
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: AudioRecorderWidget(
+                  isRecording: _isRecording,
+                  isTranscribing: _isTranscribing,
+                  onStartRecording: _startRecording,
+                  onStopRecording: _stopRecording,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Transcription Display with Translation
+            Card(
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 300),
+                padding: const EdgeInsets.all(20.0),
+                child: TranscriptionDisplayWidget(
+                  transcriptionText: _transcriptionText,
+                  showTranslation: true,
+                  onLanguageDetected: _onLanguageDetected,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModelsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
             // Model Download Section
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(20.0),
                 child: Column(
                   children: [
                     ModelDownloadWidget(
@@ -282,12 +485,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             
             // Model Management Section
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(20.0),
                 child: ModelManagementWidget(
                   currentModelPath: _currentModelPath,
                   onModelSelected: _onModelSelected,
@@ -296,153 +499,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            
-            // Current Model Status & Language Selection
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Current Model:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    FutureBuilder<Map<String, dynamic>>(
-                      future: _whisperService.getModelInfo(),
-                      builder: (context, snapshot) {
-                        if (snapshot.hasData) {
-                          final info = snapshot.data!;
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _currentModelPath ?? 'No model file selected',
-                                style: TextStyle(
-                                  color: _currentModelPath != null ? Colors.green : Colors.grey,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                info['framework'] ?? 'Using device speech recognition',
-                                style: TextStyle(
-                                  color: Colors.blue,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              if (_currentModelPath != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Status: ${info['status'] ?? 'Unknown'}',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          );
-                        } else {
-                          return Text(
-                            'Using device speech recognition (no model file needed)',
-                            style: TextStyle(
-                              color: Colors.blue,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Language:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedLanguage,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: null,
-                          child: Text('Auto-detect'),
-                        ),
-                        ..._supportedLanguages.map((String language) {
-                          return DropdownMenuItem<String>(
-                            value: language,
-                            child: Text(language.toUpperCase()),
-                          );
-                        }),
-                      ],
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedLanguage = newValue;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Audio Recording Section
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: AudioRecorderWidget(
-                  isRecording: _isRecording,
-                  isTranscribing: _isTranscribing,
-                  onStartRecording: _startRecording,
-                  onStopRecording: _stopRecording,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Audio Visualizer
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: AudioVisualizerWidget(
-                  isListening: _isRecording,
-                  soundLevel: _currentSoundLevel,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Transcription Display
-            Card(
-              child: Container(
-                height: 200,
-                padding: const EdgeInsets.all(16.0),
-                child: TranscriptionDisplayWidget(
-                  transcriptionText: _transcriptionText,
-                ),
-              ),
-            ),
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
 
-  @override
-  void dispose() {
-    _audioService.dispose();
-    super.dispose();
+  Widget _buildLanguagesTab() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: LanguageManagementWidget(),
+    );
+  }
+
+  Widget _buildSettingsTab() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: SummarizationSettingsWidget(),
+    );
   }
 }

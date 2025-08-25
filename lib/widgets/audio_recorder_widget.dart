@@ -43,109 +43,168 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return Column(
       children: [
-        const Text(
-          'Audio Recording',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+        Row(
+          children: [
+            Icon(
+              Icons.mic_rounded,
+              size: 20,
+              color: colorScheme.primary,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Audio Recording',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        
+        // Recording Status with modern design
+        Container(
+          height: 120,
+          width: 120,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _getStatusBackgroundColor(colorScheme),
+          ),
+          child: Center(
+            child: _buildStatusIcon(colorScheme),
           ),
         ),
-        const SizedBox(height: 20),
         
-        // Recording Status
-        if (widget.isRecording) ...[
-          AnimatedBuilder(
-            animation: _scaleAnimation,
-            builder: (context, child) {
-              return Transform.scale(
-                scale: _scaleAnimation.value,
-                child: const Icon(
-                  Icons.mic,
-                  size: 64,
-                  color: Colors.red,
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Listening Continuously - Speak Anytime',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.red,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ] else if (widget.isTranscribing) ...[
-          const SizedBox(
-            width: 32,
-            height: 32,
-            child: CircularProgressIndicator(),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Transcribing...',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.orange,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ] else ...[
-          const Icon(
-            Icons.mic_off,
-            size: 64,
-            color: Colors.grey,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Ready to record',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
-            ),
-          ),
-        ],
+        const SizedBox(height: 16),
         
-        const SizedBox(height: 20),
+        Text(
+          _getStatusText(),
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: _getStatusTextColor(colorScheme),
+            fontWeight: FontWeight.w500,
+          ),
+          textAlign: TextAlign.center,
+        ),
         
-        // Recording Button
+        const SizedBox(height: 24),
+        
+        // Modern Recording Button
         SizedBox(
           width: double.infinity,
           height: 56,
-          child: ElevatedButton.icon(
+          child: FilledButton.icon(
             onPressed: widget.isTranscribing 
                 ? null 
                 : (widget.isRecording ? widget.onStopRecording : widget.onStartRecording),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: widget.isRecording ? Colors.red : Colors.blue,
-              foregroundColor: Colors.white,
+            style: FilledButton.styleFrom(
+              backgroundColor: widget.isRecording 
+                  ? colorScheme.error
+                  : colorScheme.primary,
+              foregroundColor: widget.isRecording
+                  ? colorScheme.onError
+                  : colorScheme.onPrimary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: widget.isRecording ? 2 : 1,
             ),
-            icon: Icon(
-              widget.isRecording ? Icons.stop : Icons.mic,
-              size: 24,
+            icon: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: Icon(
+                widget.isRecording ? Icons.stop_rounded : Icons.mic_rounded,
+                size: 24,
+                key: ValueKey(widget.isRecording),
+              ),
             ),
-            label: Text(
-              widget.isRecording ? 'Stop Listening' : 'Start Listening',
-              style: const TextStyle(fontSize: 16),
+            label: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: Text(
+                widget.isRecording ? 'Stop Listening' : 'Start Listening',
+                style: theme.textTheme.labelLarge,
+                key: ValueKey(widget.isRecording),
+              ),
             ),
           ),
         ),
         
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Text(
           widget.isRecording 
               ? 'Listening continuously - tap Stop to finish'
               : 'Tap Start to begin live speech recognition',
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
           ),
           textAlign: TextAlign.center,
         ),
       ],
     );
+  }
+
+  Widget _buildStatusIcon(ColorScheme colorScheme) {
+    if (widget.isRecording) {
+      return AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Icon(
+              Icons.mic_rounded,
+              size: 48,
+              color: colorScheme.error,
+            ),
+          );
+        },
+      );
+    } else if (widget.isTranscribing) {
+      return SizedBox(
+        width: 32,
+        height: 32,
+        child: CircularProgressIndicator(
+          color: colorScheme.primary,
+          strokeWidth: 3,
+        ),
+      );
+    } else {
+      return Icon(
+        Icons.mic_off_rounded,
+        size: 48,
+        color: colorScheme.onSurfaceVariant,
+      );
+    }
+  }
+
+  Color _getStatusBackgroundColor(ColorScheme colorScheme) {
+    if (widget.isRecording) {
+      return colorScheme.errorContainer;
+    } else if (widget.isTranscribing) {
+      return colorScheme.primaryContainer;
+    } else {
+      return colorScheme.surfaceVariant;
+    }
+  }
+
+  Color _getStatusTextColor(ColorScheme colorScheme) {
+    if (widget.isRecording) {
+      return colorScheme.error;
+    } else if (widget.isTranscribing) {
+      return colorScheme.primary;
+    } else {
+      return colorScheme.onSurfaceVariant;
+    }
+  }
+
+  String _getStatusText() {
+    if (widget.isRecording) {
+      return 'Listening Continuously - Speak Anytime';
+    } else if (widget.isTranscribing) {
+      return 'Transcribing...';
+    } else {
+      return 'Ready to record';
+    }
   }
 }

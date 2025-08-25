@@ -24,9 +24,6 @@ dependencies:
   record: ^6.1.1
   permission_handler: ^12.0.1
   
-  # Audio visualization
-  audio_waveforms: ^1.1.0  # Real-time audio waveform visualization
-  fl_chart: ^0.69.0  # For additional charts
   
   # File system operations
   path_provider: ^2.1.1
@@ -36,6 +33,15 @@ dependencies:
   sherpa_onnx: ^1.10.41  # Offline ONNX model support
   # whisper_ggml: ^1.5.0  # Android build issues
   # flutter_pytorch_lite: ^0.1.0+3  # Temporarily disabled for Android build
+  
+  # Translation - Language Detection and Translation
+  google_mlkit_translation: ^0.12.0  # Offline translation with 50+ languages
+  google_mlkit_language_id: ^0.10.0  # Language detection
+  
+  # On-device LLM inference for summarization
+  tflite_flutter: ^0.10.4  # TensorFlow Lite for Flutter
+  mediapipe_text: ^0.1.0  # MediaPipe text processing (if available)
+  # Note: For Gemma models, we'll need to use TensorFlow Lite with custom delegates
   
   # Audio processing
   path: ^1.8.3
