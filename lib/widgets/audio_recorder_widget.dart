@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class AudioRecorderWidget extends StatelessWidget {
+class AudioRecorderWidget extends StatefulWidget {
   final bool isRecording;
   final bool isTranscribing;
   final VoidCallback onStartRecording;
@@ -13,6 +13,33 @@ class AudioRecorderWidget extends StatelessWidget {
     required this.onStartRecording,
     required this.onStopRecording,
   });
+
+  @override
+  State<AudioRecorderWidget> createState() => _AudioRecorderWidgetState();
+}
+
+class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    )..repeat(reverse: true);
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,22 +55,30 @@ class AudioRecorderWidget extends StatelessWidget {
         const SizedBox(height: 20),
         
         // Recording Status
-        if (isRecording) ...[
-          const Icon(
-            Icons.mic,
-            size: 64,
-            color: Colors.red,
+        if (widget.isRecording) ...[
+          AnimatedBuilder(
+            animation: _scaleAnimation,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _scaleAnimation.value,
+                child: const Icon(
+                  Icons.mic,
+                  size: 64,
+                  color: Colors.red,
+                ),
+              );
+            },
           ),
           const SizedBox(height: 12),
           const Text(
-            'Recording...',
+            'Listening Continuously - Speak Anytime',
             style: TextStyle(
               fontSize: 16,
               color: Colors.red,
               fontWeight: FontWeight.bold,
             ),
           ),
-        ] else if (isTranscribing) ...[
+        ] else if (widget.isTranscribing) ...[
           const SizedBox(
             width: 32,
             height: 32,
@@ -81,28 +116,30 @@ class AudioRecorderWidget extends StatelessWidget {
           width: double.infinity,
           height: 56,
           child: ElevatedButton.icon(
-            onPressed: isTranscribing 
+            onPressed: widget.isTranscribing 
                 ? null 
-                : (isRecording ? onStopRecording : onStartRecording),
+                : (widget.isRecording ? widget.onStopRecording : widget.onStartRecording),
             style: ElevatedButton.styleFrom(
-              backgroundColor: isRecording ? Colors.red : Colors.blue,
+              backgroundColor: widget.isRecording ? Colors.red : Colors.blue,
               foregroundColor: Colors.white,
             ),
             icon: Icon(
-              isRecording ? Icons.stop : Icons.mic,
+              widget.isRecording ? Icons.stop : Icons.mic,
               size: 24,
             ),
             label: Text(
-              isRecording ? 'Stop Recording' : 'Start Recording',
+              widget.isRecording ? 'Stop Listening' : 'Start Listening',
               style: const TextStyle(fontSize: 16),
             ),
           ),
         ),
         
         const SizedBox(height: 8),
-        const Text(
-          'Tap and hold to record, release to transcribe',
-          style: TextStyle(
+        Text(
+          widget.isRecording 
+              ? 'Listening continuously - tap Stop to finish'
+              : 'Tap Start to begin live speech recognition',
+          style: const TextStyle(
             fontSize: 12,
             color: Colors.grey,
           ),

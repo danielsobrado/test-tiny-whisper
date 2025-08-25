@@ -24,11 +24,17 @@ dependencies:
   record: ^6.1.1
   permission_handler: ^12.0.1
   
+  # Audio visualization
+  audio_waveforms: ^1.1.0  # Real-time audio waveform visualization
+  fl_chart: ^0.69.0  # For additional charts
+  
   # File system operations
   path_provider: ^2.1.1
   
-  # ML inference - Whisper ASR
-  # whisper_ggml: ^1.5.0  # Temporarily disabled for Android build
+  # ML inference - Speech Recognition
+  speech_to_text: ^7.0.0  # Production-ready live speech recognition
+  sherpa_onnx: ^1.10.41  # Offline ONNX model support
+  # whisper_ggml: ^1.5.0  # Android build issues
   # flutter_pytorch_lite: ^0.1.0+3  # Temporarily disabled for Android build
   
   # Audio processing

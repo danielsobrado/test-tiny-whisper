@@ -6,6 +6,7 @@ import '../widgets/model_download_widget.dart';
 import '../widgets/model_management_widget.dart';
 import '../widgets/audio_recorder_widget.dart';
 import '../widgets/transcription_display_widget.dart';
+import '../widgets/audio_visualizer_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,9 +22,10 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _currentModelPath;
   String? _modelToReplace;
   String _transcriptionText = '';
-  String _selectedLanguage = 'auto';
+  String? _selectedLanguage;
   bool _isRecording = false;
   bool _isTranscribing = false;
+  double _currentSoundLevel = 0.0;
   List<String> _supportedLanguages = [];
   final GlobalKey _downloadWidgetKey = GlobalKey();
 
@@ -46,10 +48,64 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _requestPermissions() async {
-    await [
+    // Check current permissions
+    Map<Permission, PermissionStatus> permissions = await [
       Permission.microphone,
       Permission.storage,
     ].request();
+    
+    // Handle denied permissions
+    if (permissions[Permission.microphone]?.isDenied == true) {
+      _showPermissionDialog(
+        'Microphone Permission Required',
+        'This app needs microphone access to record your voice for speech recognition.',
+        Permission.microphone,
+      );
+    }
+    
+    if (permissions[Permission.storage]?.isDenied == true) {
+      _showPermissionDialog(
+        'Storage Permission Required',
+        'This app needs storage access to download and manage speech recognition models.',
+        Permission.storage,
+      );
+    }
+  }
+  
+  void _showPermissionDialog(String title, String message, Permission permission) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                
+                // Check if permission is permanently denied
+                if (await permission.isPermanentlyDenied) {
+                  // Open app settings
+                  openAppSettings();
+                } else {
+                  // Request permission again
+                  await permission.request();
+                }
+              },
+              child: const Text('Grant Permission'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _onModelDownloaded(String modelPath) {
@@ -85,8 +141,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _startRecording() async {
-    if (_currentModelPath == null) {
-      _showSnackBar('Please download a model first');
+    // Check microphone permission before starting
+    final micStatus = await Permission.microphone.status;
+    if (!micStatus.isGranted) {
+      _showPermissionDialog(
+        'Microphone Permission Required',
+        'Please grant microphone permission to use speech recognition.',
+        Permission.microphone,
+      );
       return;
     }
 
@@ -95,36 +157,60 @@ class _HomeScreenState extends State<HomeScreen> {
       _transcriptionText = '';
     });
 
-    await _audioService.startRecording();
+    // Start live speech recognition
+    try {
+      print('Starting speech recognition from UI...');
+      
+      final transcription = await _whisperService.startLiveSpeechRecognition(
+        language: _selectedLanguage,
+        onResult: (text) {
+          print('Home screen received transcription: "$text"');
+          if (text.isNotEmpty) {
+            setState(() {
+              _transcriptionText = text;
+            });
+          }
+        },
+        onSoundLevelChange: (level) {
+          print('Home screen received sound level: $level'); // Debug logging
+          setState(() {
+            _currentSoundLevel = level;
+          });
+        },
+        onListeningStopped: () {
+          print('Speech recognition stopped from callback');
+          setState(() {
+            _isRecording = false;
+            _currentSoundLevel = 0.0;
+          });
+          _showSnackBar('Listening stopped. Tap Start to continue.');
+        },
+      );
+      
+      print('Speech recognition started successfully');
+      _showSnackBar('Speech recognition started. Start speaking...');
+      
+    } catch (e) {
+      print('Error starting speech recognition: $e');
+      _showSnackBar('Failed to start speech recognition: $e\n\nEnsure Google Speech Services is enabled on your device.');
+      setState(() {
+        _isRecording = false;
+      });
+    }
   }
 
   Future<void> _stopRecording() async {
     setState(() {
       _isRecording = false;
-      _isTranscribing = true;
+      _currentSoundLevel = 0.0;
     });
 
-    final audioPath = await _audioService.stopRecording();
-    
-    if (audioPath != null && _currentModelPath != null) {
-      try {
-        final transcription = await _whisperService.transcribe(
-          audioPath: audioPath,
-          modelPath: _currentModelPath!,
-          language: _selectedLanguage == 'auto' ? null : _selectedLanguage,
-        );
-        
-        setState(() {
-          _transcriptionText = transcription;
-        });
-      } catch (e) {
-        _showSnackBar('Transcription failed: $e');
-      }
+    // Stop live speech recognition
+    try {
+      await _whisperService.stopLiveSpeechRecognition();
+    } catch (e) {
+      _showSnackBar('Failed to stop speech recognition: $e');
     }
-
-    setState(() {
-      _isTranscribing = false;
-    });
   }
 
   void _showSnackBar(String message) {
@@ -227,13 +313,50 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      _currentModelPath ?? 'No model loaded',
-                      style: TextStyle(
-                        color: _currentModelPath != null 
-                            ? Colors.green 
-                            : Colors.red,
-                      ),
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: _whisperService.getModelInfo(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          final info = snapshot.data!;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _currentModelPath ?? 'No model file selected',
+                                style: TextStyle(
+                                  color: _currentModelPath != null ? Colors.green : Colors.grey,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                info['framework'] ?? 'Using device speech recognition',
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              if (_currentModelPath != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Status: ${info['status'] ?? 'Unknown'}',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          );
+                        } else {
+                          return Text(
+                            'Using device speech recognition (no model file needed)',
+                            style: TextStyle(
+                              color: Colors.blue,
+                            ),
+                          );
+                        }
+                      },
                     ),
                     const SizedBox(height: 16),
                     const Text(
@@ -250,18 +373,22 @@ class _HomeScreenState extends State<HomeScreen> {
                         border: OutlineInputBorder(),
                         contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       ),
-                      items: _supportedLanguages.map((String language) {
-                        return DropdownMenuItem<String>(
-                          value: language,
-                          child: Text(language == 'auto' ? 'Auto-detect' : language.toUpperCase()),
-                        );
-                      }).toList(),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('Auto-detect'),
+                        ),
+                        ..._supportedLanguages.map((String language) {
+                          return DropdownMenuItem<String>(
+                            value: language,
+                            child: Text(language.toUpperCase()),
+                          );
+                        }),
+                      ],
                       onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _selectedLanguage = newValue;
-                          });
-                        }
+                        setState(() {
+                          _selectedLanguage = newValue;
+                        });
                       },
                     ),
                   ],
@@ -279,6 +406,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   isTranscribing: _isTranscribing,
                   onStartRecording: _startRecording,
                   onStopRecording: _stopRecording,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Audio Visualizer
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: AudioVisualizerWidget(
+                  isListening: _isRecording,
+                  soundLevel: _currentSoundLevel,
                 ),
               ),
             ),

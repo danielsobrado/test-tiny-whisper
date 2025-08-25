@@ -229,6 +229,7 @@ class ModelDownloadService {
     return extension == '.bin' || 
            extension == '.gguf' || 
            extension == '.ptl' ||
+           extension == '.onnx' ||  // Added ONNX support for sherpa_onnx
            fileName == 'pytorch_model.bin' ||
            fileName.contains('config.json');
   }
@@ -248,6 +249,8 @@ class ModelDownloadService {
         return 'GGUF';
       case '.ptl':
         return 'PyTorch';
+      case '.onnx':
+        return 'ONNX';
       case '.json':
         return 'Config';
       default:
@@ -268,6 +271,10 @@ class ModelDownloadService {
     final extension = path.extension(modelPath).toLowerCase();
     final fileName = path.basename(modelPath).toLowerCase();
     return extension == '.ptl' || fileName == 'pytorch_model.bin';
+  }
+
+  bool isONNXModel(String modelPath) {
+    return path.extension(modelPath).toLowerCase() == '.onnx';
   }
 
   void dispose() {
