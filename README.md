@@ -1,33 +1,33 @@
 # Tiny Whisper Tester
 
-A comprehensive Flutter Android application for speech-to-text transcription, translation, and summarization with on-device AI capabilities. Test different Whisper models, translate speech in real-time, and summarize conversations using local LLMs.
+A Flutter Android application for speech-to-text transcription, translation, and summarisation with on-device AI capabilities. Test different Whisper models, translate speech in real-time, and summarize conversations using local LLMs.
 
-## ✨ Features
+## Features
 
-### 🎤 **Speech Recognition**
+### **Speech Recognition**
 - **Live Speech Recognition**: Real-time speech-to-text using device's built-in engine
 - **Multi-language Support**: Supports 50+ languages with automatic detection
 - **Continuous Listening**: Stream audio processing with real-time results
 
-### 🌍 **Translation**
+### **Translation**
 - **Offline Translation**: Google ML Kit powered translation for 50+ languages  
 - **Auto Language Detection**: Automatically identifies spoken language
 - **Dual Display**: Shows both original and translated text side-by-side
 - **Smart Model Management**: Downloads translation models on-demand
 
-### 🤖 **On-Device Summarization**
+### **On-Device Summarization**
 - **Local LLM Processing**: Gemma-2B/7B models for text summarization
 - **Privacy-First**: All summarization happens on-device
 - **Multiple Models**: Choose from Gemma 2B, 7B, or Gemini Nano
 - **Custom Settings**: Adjustable summary length and model parameters
 
-### 🎨 **Modern UI/UX**
+### **Modern UI/UX**
 - **Material Design 3**: Native Android look and feel
 - **Dark/Light Mode**: Automatic theme switching based on system preferences
 - **Smooth Animations**: Polished transitions and micro-interactions
 - **Intuitive Navigation**: Tab-based interface with clear organization
 
-### 🔧 **Advanced Features**
+### **Advanced Features**
 - **Smart Permission Handling**: Guided permission requests with settings navigation
 - **Model Management**: Download, replace, and delete models with progress tracking
 - **HuggingFace Integration**: Direct download from HuggingFace model repositories
@@ -69,9 +69,9 @@ The main interface for speech recognition and processing:
 2. **Start Recording**: Tap the recording button to begin live speech recognition
 3. **Real-time Results**: See transcription appear as you speak
 4. **Automatic Translation**: Non-English text is automatically translated to English
-5. **Summarization**: Use the "Summarize" button to create concise summaries
+5. **Summarisation**: Use the "Summarise" button to create concise summaries
 
-### **📁 Models Tab**
+### **Models Tab**
 Manage Whisper models for offline speech recognition:
 
 1. **Download Models**: Paste HuggingFace URLs and download Whisper models
@@ -79,7 +79,7 @@ Manage Whisper models for offline speech recognition:
 3. **Progress Tracking**: Monitor download progress with visual indicators
 4. **Model Replacement**: Replace existing models with newer versions
 
-### **🌍 Languages Tab** 
+### **Languages Tab** 
 Manage translation language models:
 
 1. **Browse Languages**: View all 50+ supported translation languages
@@ -87,21 +87,21 @@ Manage translation language models:
 3. **Model Status**: See which languages are ready for offline translation
 4. **Storage Management**: Delete unused language models to save space
 
-### **⚙️ Settings Tab**
-Configure summarization models and app preferences:
+### **Settings Tab**
+Configure summarisation models and app preferences:
 
-1. **Summarization Models**: Download Gemma 2B, 7B, or Gemini Nano models
+1. **Summarisation Models**: Download Gemma 2B, 7B, or Gemini Nano models
 2. **Model Selection**: Choose your preferred summarization model
 3. **Summary Settings**: Adjust summary length and generation parameters
 4. **Storage Info**: Monitor model storage usage and free up space
 
-## 📖 Quick Start Guide
+## Quick Start Guide
 
 1. **Grant Permissions**: Allow microphone and storage access when prompted
-2. **Download Translation Models**: Go to Languages tab, download models for your languages
+2. **Download Translation Models**: Go to the Languages tab, download models for your languages
 3. **Download Summarization Model**: Go to Settings tab, download Gemma-2B (recommended)
-4. **Start Recording**: Go to Speech tab, tap "Start Listening" and speak
-5. **View Results**: See transcription, translation, and use "Summarize" for key points
+4. **Start Recording**: Go to the Speech tab, tap "Start Listening" and speak
+5. **View Results**: See transcription, translation, and use "Summarise" for key points
 
 ## Supported Models
 
@@ -147,10 +147,10 @@ flutter build apk --debug
 # Build release APK
 flutter build apk --release
 
-# Clean build artifacts
+# Clean build artefacts
 flutter clean
 
-# Analyze code
+# Analyse code
 flutter analyze
 
 # Run tests
@@ -166,7 +166,7 @@ flutter test
 - Only appears in development/debug builds, not in release APKs
 
 **"Model file not found" error**:
-- Ensure the model downloaded completely
+- Ensure the model is downloaded completely
 - Check the models directory path: `/storage/emulated/0/Android/data/com.example.tiny_whisper_tester/files/models/`
 - Try re-downloading the model
 
@@ -180,28 +180,28 @@ flutter test
 - Check if the model file is corrupted
 
 **Poor transcription quality**:
-- Speak clearly and at normal pace
+- Speak clearly and at a normal pace
 - Reduce background noise
 - Try a larger model (base, small, medium)
 - Ensure proper microphone positioning
 
 ### Production Status
 
-✅ **Production Ready**: The app now uses `speech_to_text` package for reliable speech recognition on Android devices.
+**Production Ready**: The app now uses `speech_to_text` package for reliable speech recognition on Android devices.
 
 **Key Features**:
-- Real-time speech recognition using device's built-in speech engine
+- Real-time speech recognition using the device's built-in speech engine
 - Supports multiple languages based on device capabilities
 - Requires internet connection for processing (standard for mobile speech recognition)
 - Production-ready implementation with error handling
 
 ### Speech Recognition vs Model Downloads
 
-**Important Note**: The current production implementation uses live speech recognition rather than downloadable model files. The model download feature remains functional for future development but is not used in the current speech recognition flow.
+**Important Note**: The current production implementation uses live speech recognition rather than downloadable model files. The model download feature remains functional for future development, but is not used in the current speech recognition flow.
 
 **Current Workflow**:
-1. App initializes speech recognition service
-2. User speaks into microphone in real-time
+1. App initialises speech recognition service
+2. User speaks into the microphone in real-time
 3. Device processes speech using built-in speech engine
 4. Results are displayed immediately
 
@@ -267,8 +267,8 @@ path_provider: ^2.1.1
 speech_to_text: ^7.0.0    # Production-ready live speech recognition
 sherpa_onnx: ^1.10.41     # Offline ONNX model support (framework ready)
 
-# Audio Visualization
-fl_chart: ^0.69.0         # Real-time waveform and frequency visualization
+# Audio Visualisation
+fl_chart: ^0.69.0         # Real-time waveform and frequency visualisation
 
 # Future development packages:
 # whisper_ggml: ^1.5.0    # Android build issues
@@ -284,7 +284,7 @@ fl_chart: ^0.69.0         # Real-time waveform and frequency visualization
 - ✅ Production-ready speech recognition implemented
 - ✅ Real-time speech-to-text functionality working
 - ✅ Voice spectrogram with waveform and frequency bars
-- ✅ Continuous recording until stop button pressed
+- ✅ Continuous recording until the stop button is pressed
 - ✅ Smart permission handling with settings navigation
 - ✅ Hybrid framework ready for offline models
 - ✅ sherpa_onnx integration completed
