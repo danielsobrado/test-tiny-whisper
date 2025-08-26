@@ -291,20 +291,66 @@ class WhisperService {
 
   Future<Map<String, dynamic>> getModelInfo() async {
     if (_currentModelPath == null) {
-      return {'status': 'No model loaded'};
+      return {
+        'status': 'No model loaded',
+        'framework': 'Device speech recognition',
+        'offline_model_status': 'No offline model selected'
+      };
     }
 
     final File modelFile = File(_currentModelPath!);
-    final int fileSize = await modelFile.length();
+    final bool fileExists = await modelFile.exists();
+    final int fileSize = fileExists ? await modelFile.length() : 0;
     final String model = _getModelFromPath(_currentModelPath!);
+    final String modelFormat = _getModelFormat(_currentModelPath!);
+    
+    // Determine actual status
+    String actualFramework;
+    String offlineStatus;
+    String mainStatus;
+    
+    if (!fileExists) {
+      actualFramework = 'Device speech recognition (model file not found)';
+      offlineStatus = 'Selected model file does not exist';
+      mainStatus = 'Model file missing - using device speech recognition';
+    } else if (_isOfflineModelLoaded && _offlineRecognizer != null) {
+      actualFramework = 'Offline model (sherpa_onnx)';
+      offlineStatus = 'Offline model loaded and active';
+      mainStatus = 'Using offline model for transcription';
+    } else {
+      // This is the current reality - model selected but not used
+      actualFramework = 'Device speech recognition (offline models not yet implemented)';
+      offlineStatus = 'Selected model not in use - offline processing not implemented';
+      mainStatus = 'Model selected but using device speech recognition';
+    }
     
     return {
       'path': _currentModelPath,
       'size': fileSize,
       'model_type': model,
-      'status': _isInitialized ? 'Ready for transcription' : 'Not initialized',
-      'framework': 'speech_to_text (Production-ready speech recognition)',
+      'model_format': modelFormat,
+      'status': mainStatus,
+      'framework': actualFramework,
+      'offline_model_status': offlineStatus,
+      'is_offline_active': _isOfflineModelLoaded,
+      'file_exists': fileExists,
     };
+  }
+
+  String _getModelFormat(String modelPath) {
+    final String extension = modelPath.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'onnx':
+        return 'ONNX';
+      case 'gguf':
+        return 'GGUF';
+      case 'bin':
+        return 'GGML';
+      case 'ptl':
+        return 'PyTorch';
+      default:
+        return 'Unknown';
+    }
   }
 
   void dispose() {

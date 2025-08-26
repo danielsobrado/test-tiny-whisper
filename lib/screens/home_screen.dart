@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:path/path.dart' as path;
 import '../services/audio_service.dart';
 import '../services/whisper_service.dart';
 import '../widgets/model_download_widget.dart';
@@ -304,32 +305,119 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     builder: (context, snapshot) {
                       if (snapshot.hasData) {
                         final info = snapshot.data!;
+                        final bool isOfflineActive = info['is_offline_active'] == true;
+                        final bool fileExists = info['file_exists'] == true;
+                        
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              _currentModelPath ?? 'No model file selected',
-                              style: TextStyle(
-                                color: _currentModelPath != null ? Colors.green : Colors.grey,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              info['framework'] ?? 'Using device speech recognition',
-                              style: const TextStyle(
-                                color: Colors.blue,
-                                fontSize: 12,
-                              ),
-                            ),
-                            if (_currentModelPath != null) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                'Status: ${info['status'] ?? 'Unknown'}',
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
+                            // Model file path display
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _currentModelPath != null 
+                                        ? path.basename(_currentModelPath!) 
+                                        : 'No model file selected',
+                                    style: TextStyle(
+                                      color: _currentModelPath != null && fileExists
+                                          ? (isOfflineActive ? Colors.green : Colors.orange)
+                                          : Colors.grey,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
+                                if (_currentModelPath != null) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: isOfflineActive 
+                                          ? Colors.green.withOpacity(0.1)
+                                          : Colors.orange.withOpacity(0.1),
+                                      border: Border.all(
+                                        color: isOfflineActive ? Colors.green : Colors.orange,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      isOfflineActive ? 'ACTIVE' : 'NOT USED',
+                                      style: TextStyle(
+                                        color: isOfflineActive ? Colors.green : Colors.orange,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            
+                            // Framework/Engine information
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: isOfflineActive 
+                                    ? Colors.green.withOpacity(0.1)
+                                    : Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: isOfflineActive 
+                                      ? Colors.green.withOpacity(0.3)
+                                      : Colors.blue.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        isOfflineActive ? Icons.offline_bolt : Icons.cloud,
+                                        size: 16,
+                                        color: isOfflineActive ? Colors.green : Colors.blue,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          info['framework'] ?? 'Using device speech recognition',
+                                          style: TextStyle(
+                                            color: isOfflineActive ? Colors.green.shade700 : Colors.blue.shade700,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (_currentModelPath != null && !isOfflineActive) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      info['offline_model_status'] ?? 'Offline model not active',
+                                      style: TextStyle(
+                                        color: Colors.orange.shade700,
+                                        fontSize: 11,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            
+                            // Additional model details
+                            if (_currentModelPath != null) ...[
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                children: [
+                                  if (info['model_format'] != null)
+                                    _buildInfoChip('Format', info['model_format']),
+                                  if (info['model_type'] != null)
+                                    _buildInfoChip('Type', info['model_type']),
+                                  if (info['size'] != null)
+                                    _buildInfoChip('Size', _formatBytes(info['size'])),
+                                ],
                               ),
                             ],
                           ],
@@ -517,5 +605,30 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: SummarizationSettingsWidget(),
     );
+  }
+
+  Widget _buildInfoChip(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Text(
+        '$label: $value',
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes < 1024) return '${bytes}B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)}KB';
+    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)}GB';
   }
 }
