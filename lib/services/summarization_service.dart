@@ -424,15 +424,32 @@ class SummarizationService {
         
     if (sentences.isEmpty) return 'Unable to generate summary.';
     
-    // For single sentence, combine key elements from first few sentences
+    // For single sentence, create a concise summary
     final keyWords = _extractKeyWords(text);
-    final mainConcepts = keyWords.take(3).join(', ');
     
     if (sentences.length == 1) {
-      return sentences.first.endsWith('.') ? sentences.first : '${sentences.first}.';
+      // If original is already short, return it
+      if (sentences.first.length <= 100) {
+        return sentences.first.endsWith('.') ? sentences.first : '${sentences.first}.';
+      }
+      // Otherwise, shorten it
+      return '${_shortenSentence(sentences.first)}.';
     }
     
-    return 'The content discusses $mainConcepts and presents key information about ${sentences.first.toLowerCase().replaceAll(RegExp(r'^[^a-zA-Z]*'), '')}.';
+    // Create a single condensed sentence from multiple sentences
+    if (keyWords.isNotEmpty) {
+      final mainTopic = keyWords.first;
+      final secondaryTopic = keyWords.length > 1 ? keyWords[1] : '';
+      
+      if (secondaryTopic.isNotEmpty) {
+        return 'The content focuses on $mainTopic and $secondaryTopic, presenting key information and insights.';
+      } else {
+        return 'The content discusses $mainTopic with relevant details and analysis.';
+      }
+    }
+    
+    // Fallback: take and condense the first sentence
+    return '${_shortenSentence(sentences.first)}.';
   }
   
   /// Create bullet point summary
@@ -447,15 +464,68 @@ class SummarizationService {
     final bulletPoints = <String>[];
     final keyWords = _extractKeyWords(text);
     
-    // Take top sentences and convert to bullet points
+    // Create actual summarized bullet points instead of full sentences
     for (int i = 0; i < sentences.length && bulletPoints.length < 4; i++) {
       final sentence = sentences[i];
       if (sentence.length > 20) {
-        bulletPoints.add('• ${sentence.substring(0, 1).toUpperCase()}${sentence.substring(1)}');
+        // Extract key parts of the sentence for bullet points
+        final summarizedPoint = _extractKeyPhrase(sentence);
+        if (summarizedPoint.isNotEmpty && summarizedPoint != sentence) {
+          bulletPoints.add('• $summarizedPoint');
+        } else {
+          // If can't summarize, take first meaningful part
+          final shortPoint = _shortenSentence(sentence);
+          bulletPoints.add('• $shortPoint');
+        }
       }
     }
     
+    // If we have key words, add them as additional bullet points
+    if (bulletPoints.length < 3 && keyWords.isNotEmpty) {
+      final keyTopics = keyWords.take(2).join(' and ');
+      bulletPoints.add('• Key topics: $keyTopics');
+    }
+    
     return bulletPoints.join('\n');
+  }
+  
+  /// Extract key phrase from a sentence for bullet points
+  String _extractKeyPhrase(String sentence) {
+    // Remove common starting words
+    String cleaned = sentence.replaceFirst(RegExp(r'^(The|This|That|It|There|Here|We|They|I|You)\s+', caseSensitive: false), '');
+    
+    // Find main action or topic (simplified approach)
+    final actionWords = ['is', 'are', 'was', 'were', 'has', 'have', 'will', 'would', 'can', 'could', 'should', 'must'];
+    final words = cleaned.split(' ');
+    
+    // Look for key action or concept
+    for (int i = 0; i < words.length - 1; i++) {
+      if (actionWords.contains(words[i].toLowerCase())) {
+        // Take the action and a few words after
+        final keyPart = words.sublist(0, i + 3).join(' ');
+        return keyPart.length > 10 ? keyPart : cleaned.split(' ').take(5).join(' ');
+      }
+    }
+    
+    // Fallback: take first meaningful chunk
+    return words.take(5).join(' ');
+  }
+  
+  /// Shorten a sentence while preserving meaning
+  String _shortenSentence(String sentence) {
+    final words = sentence.split(' ');
+    if (words.length <= 6) return sentence;
+    
+    // Remove filler words and keep core meaning
+    final fillerWords = ['very', 'really', 'quite', 'rather', 'somewhat', 'fairly', 'pretty', 'just', 'only', 'even'];
+    final importantWords = words.where((word) => !fillerWords.contains(word.toLowerCase())).toList();
+    
+    if (importantWords.length <= 8) {
+      return importantWords.join(' ');
+    }
+    
+    // Take first part that contains main idea
+    return importantWords.take(6).join(' ');
   }
   
   /// Create key insights summary
