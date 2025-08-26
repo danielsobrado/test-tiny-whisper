@@ -8,6 +8,7 @@ import '../widgets/audio_recorder_widget.dart';
 import '../widgets/transcription_display_widget.dart';
 import '../widgets/language_management_widget.dart';
 import '../widgets/summarization_settings_widget.dart';
+import '../widgets/summarization_prompts_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(() {
       setState(() {
         _currentTabIndex = _tabController.index;
@@ -65,13 +66,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _requestPermissions() async {
-    // Check current permissions
     Map<Permission, PermissionStatus> permissions = await [
       Permission.microphone,
       Permission.storage,
     ].request();
     
-    // Handle denied permissions
     if (permissions[Permission.microphone]?.isDenied == true) {
       _showPermissionDialog(
         'Microphone Permission Required',
@@ -108,12 +107,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               onPressed: () async {
                 Navigator.of(context).pop();
                 
-                // Check if permission is permanently denied
                 if (await permission.isPermanentlyDenied) {
-                  // Open app settings
                   openAppSettings();
                 } else {
-                  // Request permission again
                   await permission.request();
                 }
               },
@@ -128,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void _onModelDownloaded(String modelPath) {
     setState(() {
       _currentModelPath = modelPath;
-      _modelToReplace = null; // Clear replace mode
+      _modelToReplace = null;
     });
   }
   
@@ -158,7 +154,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _startRecording() async {
-    // Check microphone permission before starting
     final micStatus = await Permission.microphone.status;
     if (!micStatus.isGranted) {
       _showPermissionDialog(
@@ -174,7 +169,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _transcriptionText = '';
     });
 
-    // Start live speech recognition
     try {
       print('Starting speech recognition from UI...');
       
@@ -189,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           }
         },
         onSoundLevelChange: (level) {
-          print('Home screen received sound level: $level'); // Debug logging
+          print('Home screen received sound level: $level');
           setState(() {
             _currentSoundLevel = level;
           });
@@ -222,7 +216,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _currentSoundLevel = 0.0;
     });
 
-    // Stop live speech recognition
     try {
       await _whisperService.stopLiveSpeechRecognition();
     } catch (e) {
@@ -258,6 +251,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             Tab(icon: Icon(Icons.mic_rounded), text: 'Speech'),
             Tab(icon: Icon(Icons.storage_rounded), text: 'Models'),
             Tab(icon: Icon(Icons.translate_rounded), text: 'Languages'),
+            Tab(icon: Icon(Icons.edit_note_rounded), text: 'Prompts'),
             Tab(icon: Icon(Icons.settings_rounded), text: 'Settings'),
           ],
         ),
@@ -268,6 +262,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _buildSpeechTab(),
           _buildModelsTab(),
           _buildLanguagesTab(),
+          _buildPromptsTab(),
           _buildSettingsTab(),
         ],
       ),
@@ -304,127 +299,126 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ],
                   ),
                   const SizedBox(height: 16),
-                    FutureBuilder<Map<String, dynamic>>(
-                      future: _whisperService.getModelInfo(),
-                      builder: (context, snapshot) {
-                        if (snapshot.hasData) {
-                          final info = snapshot.data!;
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _currentModelPath ?? 'No model file selected',
-                                style: TextStyle(
-                                  color: _currentModelPath != null ? Colors.green : Colors.grey,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                  FutureBuilder<Map<String, dynamic>>(
+                    future: _whisperService.getModelInfo(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        final info = snapshot.data!;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _currentModelPath ?? 'No model file selected',
+                              style: TextStyle(
+                                color: _currentModelPath != null ? Colors.green : Colors.grey,
+                                fontWeight: FontWeight.bold,
                               ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              info['framework'] ?? 'Using device speech recognition',
+                              style: const TextStyle(
+                                color: Colors.blue,
+                                fontSize: 12,
+                              ),
+                            ),
+                            if (_currentModelPath != null) ...[
                               const SizedBox(height: 4),
                               Text(
-                                info['framework'] ?? 'Using device speech recognition',
+                                'Status: ${info['status'] ?? 'Unknown'}',
                                 style: const TextStyle(
-                                  color: Colors.blue,
+                                  color: Colors.grey,
                                   fontSize: 12,
                                 ),
                               ),
-                              if (_currentModelPath != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Status: ${info['status'] ?? 'Unknown'}',
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
                             ],
-                          );
-                        } else {
-                          return const Text(
-                            'Using device speech recognition (no model file needed)',
-                            style: TextStyle(
-                              color: Colors.blue,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.language_rounded,
-                          size: 20,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Language',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
+                          ],
+                        );
+                      } else {
+                        return const Text(
+                          'Using device speech recognition (no model file needed)',
+                          style: TextStyle(
+                            color: Colors.blue,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedLanguage,
-                      decoration: const InputDecoration(
-                        hintText: 'Select language',
+                        );
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.language_rounded,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: null,
-                          child: Text('Auto-detect'),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Language',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
-                        ..._supportedLanguages.map((String language) {
-                          return DropdownMenuItem<String>(
-                            value: language,
-                            child: Text(language.toUpperCase()),
-                          );
-                        }),
-                      ],
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedLanguage = newValue;
-                        });
-                      },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedLanguage,
+                    decoration: const InputDecoration(
+                      hintText: 'Select language',
                     ),
-                  ],
-                ),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('Auto-detect'),
+                      ),
+                      ..._supportedLanguages.map((String language) {
+                        return DropdownMenuItem<String>(
+                          value: language,
+                          child: Text(language.toUpperCase()),
+                        );
+                      }).toList(),
+                    ],
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedLanguage = newValue;
+                      });
+                    },
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 24),
+          ),
+          const SizedBox(height: 24),
 
-            // Audio Recording Section
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: AudioRecorderWidget(
-                  isRecording: _isRecording,
-                  isTranscribing: _isTranscribing,
-                  onStartRecording: _startRecording,
-                  onStopRecording: _stopRecording,
-                ),
+          // Audio Recording Section
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: AudioRecorderWidget(
+                isRecording: _isRecording,
+                isTranscribing: _isTranscribing,
+                onStartRecording: _startRecording,
+                onStopRecording: _stopRecording,
               ),
             ),
-            const SizedBox(height: 24),
+          ),
+          const SizedBox(height: 24),
 
-            // Transcription Display with Translation
-            Card(
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 300),
-                padding: const EdgeInsets.all(20.0),
-                child: TranscriptionDisplayWidget(
-                  transcriptionText: _transcriptionText,
-                  showTranslation: true,
-                  onLanguageDetected: _onLanguageDetected,
-                ),
+          // Transcription Display with Translation
+          Card(
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 300),
+              padding: const EdgeInsets.all(20.0),
+              child: TranscriptionDisplayWidget(
+                transcriptionText: _transcriptionText,
+                showTranslation: true,
+                onLanguageDetected: _onLanguageDetected,
               ),
             ),
-            const SizedBox(height: 24),
-          ],
-        ),
+          ),
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }
@@ -435,72 +429,71 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-            // Model Download Section
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  children: [
-                    ModelDownloadWidget(
-                      key: _downloadWidgetKey,
-                      onModelDownloaded: _onModelDownloaded,
-                      onModelReplaced: _onModelReplaced,
-                      replaceModelPath: _modelToReplace,
-                    ),
-                    if (_modelToReplace != null) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          border: Border.all(color: Colors.orange.shade200),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.info, color: Colors.orange.shade700),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Replace mode: Next download will replace the selected model',
-                                style: TextStyle(
-                                  color: Colors.orange.shade700,
-                                  fontWeight: FontWeight.bold,
-                                ),
+          // Model Download Section
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                children: [
+                  ModelDownloadWidget(
+                    key: _downloadWidgetKey,
+                    onModelDownloaded: _onModelDownloaded,
+                    onModelReplaced: _onModelReplaced,
+                    replaceModelPath: _modelToReplace,
+                  ),
+                  if (_modelToReplace != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        border: Border.all(color: Colors.orange.shade200),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info, color: Colors.orange.shade700),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Replace mode: Next download will replace the selected model',
+                              style: TextStyle(
+                                color: Colors.orange.shade700,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            TextButton(
-                              onPressed: () {
-                                setState(() {
-                                  _modelToReplace = null;
-                                });
-                              },
-                              child: const Text('Cancel'),
-                            ),
-                          ],
-                        ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _modelToReplace = null;
+                              });
+                            },
+                            child: const Text('Cancel'),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
-            const SizedBox(height: 24),
-            
-            // Model Management Section
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: ModelManagementWidget(
-                  currentModelPath: _currentModelPath,
-                  onModelSelected: _onModelSelected,
-                  onModelDeleted: _onModelDeleted,
-                  onModelReplace: _onModelReplace,
-                ),
+          ),
+          const SizedBox(height: 24),
+          
+          // Model Management Section
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: ModelManagementWidget(
+                currentModelPath: _currentModelPath,
+                onModelSelected: _onModelSelected,
+                onModelDeleted: _onModelDeleted,
+                onModelReplace: _onModelReplace,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -509,6 +502,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: LanguageManagementWidget(),
+    );
+  }
+
+  Widget _buildPromptsTab() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: SummarizationPromptsWidget(),
     );
   }
 

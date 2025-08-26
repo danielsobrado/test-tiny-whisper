@@ -73,7 +73,18 @@ class TranslationService {
   /// Get downloaded model languages
   Future<Set<String>> getDownloadedModels() async {
     try {
-      return await _modelManager.getDownloadedModels();
+      final downloadedModels = <String>{};
+      
+      // Check some common languages to see which models are downloaded
+      final commonLanguages = ['es', 'fr', 'de', 'it', 'pt', 'ru', 'ja', 'ko', 'zh', 'ar', 'hi'];
+      
+      for (final languageCode in commonLanguages) {
+        if (await isModelDownloaded(languageCode)) {
+          downloadedModels.add(languageCode);
+        }
+      }
+      
+      return downloadedModels;
     } catch (e) {
       print('Error getting downloaded models: $e');
       return {};
@@ -152,11 +163,31 @@ class TranslationService {
         );
       }
       
+      // First check if text contains mostly English words (simple heuristic)
+      if (_isLikelyEnglish(text)) {
+        return TranslationResult(
+          originalText: text,
+          detectedLanguage: 'en',
+          translatedText: null,
+          needsTranslation: false,
+        );
+      }
+      
       // Detect language
       final detectedLanguage = await detectLanguage(text);
       
-      // If detection failed or text is already in English, no translation needed
-      if (detectedLanguage == null || detectedLanguage == _defaultTargetLanguage) {
+      // If detection failed, assume English for safety
+      if (detectedLanguage == null || detectedLanguage == 'und') {
+        return TranslationResult(
+          originalText: text,
+          detectedLanguage: 'en', // Assume English if uncertain
+          translatedText: null,
+          needsTranslation: false,
+        );
+      }
+      
+      // If text is already in English, no translation needed
+      if (detectedLanguage == _defaultTargetLanguage) {
         return TranslationResult(
           originalText: text,
           detectedLanguage: detectedLanguage,
@@ -176,13 +207,41 @@ class TranslationService {
       );
     } catch (e) {
       print('Error in detectAndTranslate: $e');
+      // On error, assume English and don't translate
       return TranslationResult(
         originalText: text,
-        detectedLanguage: null,
+        detectedLanguage: 'en',
         translatedText: null,
         needsTranslation: false,
       );
     }
+  }
+  
+  /// Simple heuristic to check if text is likely English
+  bool _isLikelyEnglish(String text) {
+    final lowerText = text.toLowerCase();
+    
+    // Common English words that are good indicators
+    final englishIndicators = [
+      'the', 'and', 'is', 'are', 'was', 'were', 'a', 'an', 'to', 'of', 'in', 
+      'for', 'with', 'on', 'at', 'by', 'from', 'this', 'that', 'these', 'those',
+      'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
+      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should',
+      'can', 'may', 'might', 'must', 'shall', 'be', 'been', 'being'
+    ];
+    
+    int matches = 0;
+    final words = lowerText.split(' ');
+    
+    for (final word in words) {
+      final cleanWord = word.replaceAll(RegExp(r'[^\w]'), '');
+      if (englishIndicators.contains(cleanWord)) {
+        matches++;
+      }
+    }
+    
+    // If more than 30% of words are common English words, assume English
+    return matches > 0 && (matches / words.length) > 0.3;
   }
   
   /// Get language name from code

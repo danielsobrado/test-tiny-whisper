@@ -24,9 +24,9 @@ android {
         applicationId = "com.example.tiny_whisper_tester"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 23 // Required for ML Kit Translation (API level 23+)
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
+        minSdk = (flutter.minSdkVersion as Int) // Required for ML Kit Translation (API level 23+)
+        targetSdk = (flutter.targetSdkVersion as Int)
+        versionCode = (flutter.versionCode as Int)
         versionName = flutter.versionName
         
         // Enable multidex support for ML Kit dependencies

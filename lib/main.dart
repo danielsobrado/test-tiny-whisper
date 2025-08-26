@@ -95,7 +95,7 @@ class TinyWhisperTesterApp extends StatelessWidget {
       ),
       
       // Card theme
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 2,
         shadowColor: Colors.black.withOpacity(0.15),
         shape: RoundedRectangleBorder(
@@ -120,7 +120,7 @@ class TinyWhisperTesterApp extends StatelessWidget {
       ),
       
       // Tab bar theme
-      tabBarTheme: TabBarTheme(
+      tabBarTheme: TabBarThemeData(
         labelColor: primaryColor,
         unselectedLabelColor: const Color(0xFF49454F),
         indicatorColor: primaryColor,
@@ -186,7 +186,7 @@ class TinyWhisperTesterApp extends StatelessWidget {
       ),
       
       // Card theme for dark mode
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 2,
         shadowColor: Colors.black.withOpacity(0.3),
         shape: RoundedRectangleBorder(
@@ -211,7 +211,7 @@ class TinyWhisperTesterApp extends StatelessWidget {
       ),
       
       // Tab bar theme for dark mode
-      tabBarTheme: TabBarTheme(
+      tabBarTheme: TabBarThemeData(
         labelColor: primaryColor,
         unselectedLabelColor: const Color(0xFFCAC4D0),
         indicatorColor: primaryColor,

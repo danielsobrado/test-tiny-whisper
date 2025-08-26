@@ -163,14 +163,20 @@ class _TranscriptionDisplayWidgetState extends State<TranscriptionDisplayWidget>
               const SizedBox(width: 8),
             ],
             if (widget.transcriptionText.isNotEmpty && !_isSummarizing)
-              FilledButton.icon(
-                onPressed: _summarizeText,
-                icon: const Icon(Icons.auto_awesome_rounded, size: 16),
-                label: const Text('Summarize'),
-                style: FilledButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
+              FutureBuilder<String>(
+                future: _getSelectedPromptName(),
+                builder: (context, snapshot) {
+                  final promptName = snapshot.data ?? 'Default';
+                  return FilledButton.icon(
+                    onPressed: _summarizeText,
+                    icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+                    label: Text('Summarize ($promptName)'),
+                    style: FilledButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  );
+                },
               ),
           ],
         ),
@@ -338,14 +344,14 @@ class _TranscriptionDisplayWidgetState extends State<TranscriptionDisplayWidget>
             ),
           ],
           
-          if (widget.showTranslation && _translationResult == null && widget.transcriptionText.isNotEmpty) ...[
+          if (widget.showTranslation && _translationResult == null && widget.transcriptionText.isNotEmpty && _isTranslating) ...[
             const SizedBox(height: 4),
             Row(
               children: [
                 Icon(Icons.translate, size: 16, color: Colors.orange[600]),
                 const SizedBox(width: 8),
                 Text(
-                  'Translation pending...',
+                  'Analyzing language...',
                   style: TextStyle(fontSize: 12, color: Colors.orange[700]),
                 ),
               ],

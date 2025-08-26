@@ -12,6 +12,7 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
   final SummarizationService _summarizationService = SummarizationService();
   List<String> _downloadedModels = [];
   Map<String, double> _downloadProgress = {};
+  Map<String, dynamic> _storageInfo = {};
   bool _isLoading = true;
   String? _currentModel;
 
@@ -31,6 +32,7 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
     try {
       await _summarizationService.initialize();
       await _loadDownloadedModels();
+      await _loadStorageInfo();
       _loadCurrentModel();
     } catch (e) {
       if (mounted) {
@@ -59,6 +61,19 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
           SnackBar(content: Text('Error loading models: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _loadStorageInfo() async {
+    try {
+      final info = await _summarizationService.getStorageInfo();
+      if (mounted) {
+        setState(() {
+          _storageInfo = info;
+        });
+      }
+    } catch (e) {
+      print('Error loading storage info: $e');
     }
   }
 
@@ -96,10 +111,13 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
           }
         });
 
+        await _loadStorageInfo(); // Refresh storage info
+
         if (success) {
+          final modelInfo = SummarizationService.availableModels[modelKey];
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${SummarizationService.availableModels[modelKey]?.name} downloaded successfully'),
+              content: Text('${modelInfo?.name} downloaded successfully'),
               backgroundColor: Colors.green,
             ),
           );
@@ -109,9 +127,10 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
             await _loadModel(modelKey);
           }
         } else {
+          final modelInfo = SummarizationService.availableModels[modelKey];
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to download ${SummarizationService.availableModels[modelKey]?.name}'),
+              content: Text('Failed to download ${modelInfo?.name}'),
               backgroundColor: Colors.red,
             ),
           );
@@ -139,20 +158,25 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
         if (success) {
           setState(() {
             _downloadedModels.remove(modelKey);
-            if (_currentModel == modelKey) {
+            if (_currentModel?.contains(modelKey) == true) {
               _currentModel = null;
             }
           });
+          
+          await _loadStorageInfo(); // Refresh storage info
+          
+          final modelInfo = SummarizationService.availableModels[modelKey];
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${SummarizationService.availableModels[modelKey]?.name} deleted'),
+              content: Text('${modelInfo?.name} deleted'),
               backgroundColor: Colors.orange,
             ),
           );
         } else {
+          final modelInfo = SummarizationService.availableModels[modelKey];
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to delete ${SummarizationService.availableModels[modelKey]?.name}'),
+              content: Text('Failed to delete ${modelInfo?.name}'),
               backgroundColor: Colors.red,
             ),
           );
@@ -175,19 +199,21 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
       final success = await _summarizationService.loadModel(modelKey);
       if (mounted) {
         if (success) {
+          final modelInfo = SummarizationService.availableModels[modelKey];
           setState(() {
-            _currentModel = modelKey;
+            _currentModel = modelInfo?.name ?? modelKey;
           });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${SummarizationService.availableModels[modelKey]?.name} loaded successfully'),
+              content: Text('${modelInfo?.name} loaded successfully'),
               backgroundColor: Colors.green,
             ),
           );
         } else {
+          final modelInfo = SummarizationService.availableModels[modelKey];
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to load ${SummarizationService.availableModels[modelKey]?.name}'),
+              content: Text('Failed to load ${modelInfo?.name}'),
               backgroundColor: Colors.red,
             ),
           );
@@ -217,7 +243,7 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text('Loading summarization models...'),
+            Text('Loading AI models...'),
           ],
         ),
       );
@@ -256,7 +282,7 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Download and manage local AI models for text summarization. All processing happens on-device for privacy.',
+                  'Download and manage Gemma 3 models for on-device AI text summarization. All processing happens locally for privacy.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onPrimaryContainer,
                   ),
@@ -279,7 +305,7 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Active: ${SummarizationService.availableModels[_currentModel]?.name ?? _currentModel}',
+                          'Active: $_currentModel',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colorScheme.onPrimary,
                             fontWeight: FontWeight.w500,
@@ -293,11 +319,40 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+
+          // Storage Info
+          if (_storageInfo.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceVariant.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.storage_rounded,
+                    color: colorScheme.onSurfaceVariant,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Storage Used: ${_storageInfo['formattedSize']} • ${_storageInfo['modelCount']} models',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
 
           // Models List
           Text(
-            'Available Models',
+            'Available Gemma Models',
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -310,7 +365,7 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
             final isDownloaded = _downloadedModels.contains(modelKey);
             final isDownloading = _downloadProgress.containsKey(modelKey);
             final downloadProgress = _downloadProgress[modelKey] ?? 0.0;
-            final isActive = _currentModel == modelKey;
+            final isActive = _currentModel?.contains(modelInfo.name) == true;
 
             return Card(
               margin: const EdgeInsets.only(bottom: 16),
@@ -345,10 +400,12 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
                             children: [
                               Row(
                                 children: [
-                                  Text(
-                                    modelInfo.name,
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
+                                  Flexible(
+                                    child: Text(
+                                      modelInfo.name,
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                   if (modelInfo.isDefault) ...[
@@ -356,13 +413,13 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: colorScheme.primary,
+                                        color: colorScheme.secondary,
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Text(
-                                        'Recommended',
+                                        'Default',
                                         style: theme.textTheme.bodySmall?.copyWith(
-                                          color: colorScheme.onPrimary,
+                                          color: colorScheme.onSecondary,
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
@@ -413,6 +470,19 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
                         const SizedBox(width: 6),
                         Text(
                           'Size: ${modelInfo.size}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Icon(
+                          Icons.memory_rounded,
+                          size: 16,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          modelInfo.format,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),
@@ -491,10 +561,10 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Delete Model'),
+          title: const Text('Delete AI Model'),
           content: Text(
             'Are you sure you want to delete "$modelName"?\n\n'
-            'This will free up storage space but you will need to download it again to use summarization.',
+            'This will free up storage space but you will need to download it again to use AI summarization.',
           ),
           actions: [
             TextButton(
