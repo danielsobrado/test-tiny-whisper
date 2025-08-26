@@ -90,7 +90,7 @@ class PyTorchWhisperService {
     final String modelName = modelPath.split('/').last;
     
     return 'PyTorch Model Loaded: $modelName\n\n'
-           'Audio File: $fileName (${fileSize} bytes)\n\n'
+           'Audio File: $fileName ($fileSize bytes)\n\n'
            'NOTICE: Full PyTorch Whisper inference is complex and requires:\n'
            '• Audio preprocessing (mel-spectrogram conversion)\n'
            '• Tokenizer configuration\n'

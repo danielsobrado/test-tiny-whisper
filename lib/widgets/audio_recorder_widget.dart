@@ -184,7 +184,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
     } else if (widget.isTranscribing) {
       return colorScheme.primaryContainer;
     } else {
-      return colorScheme.surfaceVariant;
+      return colorScheme.surfaceContainerHighest;
     }
   }
 

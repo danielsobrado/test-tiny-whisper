@@ -26,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   String _transcriptionText = '';
   String? _selectedLanguage;
   bool _isRecording = false;
-  bool _isTranscribing = false;
+  final bool _isTranscribing = false;
   double _currentSoundLevel = 0.0;
   List<String> _supportedLanguages = [];
   final GlobalKey _downloadWidgetKey = GlobalKey();
@@ -377,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           value: language,
                           child: Text(language.toUpperCase()),
                         );
-                      }).toList(),
+                      }),
                     ],
                     onChanged: (String? newValue) {
                       setState(() {

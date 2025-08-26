@@ -151,7 +151,7 @@ class _SummarizationPromptsWidgetState extends State<SummarizationPromptsWidget>
                     decoration: BoxDecoration(
                       color: isSelected 
                           ? colorScheme.primaryContainer
-                          : colorScheme.surfaceVariant,
+                          : colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(

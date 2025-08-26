@@ -12,7 +12,7 @@ class LanguageManagementWidget extends StatefulWidget {
 class _LanguageManagementWidgetState extends State<LanguageManagementWidget> {
   final TranslationService _translationService = TranslationService();
   Set<String> _downloadedModels = {};
-  Set<String> _downloadingModels = {};
+  final Set<String> _downloadingModels = {};
   bool _isLoading = true;
 
   @override

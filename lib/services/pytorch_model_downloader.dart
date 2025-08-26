@@ -158,7 +158,7 @@ class PyTorchModelDownloader {
 
     final files = await dir.list().toList();
     return files
-        .where((f) => f is File)
+        .whereType<File>()
         .map((f) => path.basename(f.path))
         .toList();
   }

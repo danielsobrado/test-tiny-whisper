@@ -249,7 +249,7 @@ class SummarizationService {
 
       if (response.statusCode == 200) {
         final fileSize = await modelFile.length();
-        print('Successfully downloaded ${modelInfo.name} (${fileSize} bytes)');
+        print('Successfully downloaded ${modelInfo.name} ($fileSize bytes)');
         return true;
       } else {
         print('Download failed with status code: ${response.statusCode}');
@@ -624,7 +624,7 @@ class SummarizationService {
       selectedSentences.add(sentences.first);
     }
 
-    final summary = selectedSentences.join('. ') + '.';
+    final summary = '${selectedSentences.join('. ')}.';
     
     // Trim if too long
     if (summary.length > maxLength * 3) {
@@ -652,7 +652,7 @@ class SummarizationService {
       selectedSentences.add(sentences[1]);
     }
 
-    final summary = selectedSentences.join('. ') + '.';
+    final summary = '${selectedSentences.join('. ')}.';
     return summary.length > maxLength * 2 
         ? '${summary.substring(0, maxLength * 2)}...' 
         : summary;

@@ -11,7 +11,7 @@ class SummarizationSettingsWidget extends StatefulWidget {
 class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidget> {
   final SummarizationService _summarizationService = SummarizationService();
   List<String> _downloadedModels = [];
-  Map<String, double> _downloadProgress = {};
+  final Map<String, double> _downloadProgress = {};
   Map<String, dynamic> _storageInfo = {};
   bool _isLoading = true;
   String? _currentModel;
@@ -326,7 +326,7 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceVariant.withOpacity(0.5),
+                color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -382,7 +382,7 @@ class _SummarizationSettingsWidgetState extends State<SummarizationSettingsWidge
                           decoration: BoxDecoration(
                             color: modelInfo.isDefault 
                                 ? colorScheme.primaryContainer
-                                : colorScheme.surfaceVariant,
+                                : colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(

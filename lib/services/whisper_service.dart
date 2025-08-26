@@ -1,8 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart';
-import 'package:path/path.dart' as path;
 
 class WhisperService {
   final SpeechToText _speechToText = SpeechToText();
