@@ -58,11 +58,11 @@ flutter build apk --release
 flutter install
 ```
 
-## 🚀 Usage
+## Usage
 
 The app features a clean tab-based interface with three main sections:
 
-### **🎤 Speech Tab**
+### **Speech Tab**
 The main interface for speech recognition and processing:
 
 1. **Language Selection**: Choose your language or use "Auto-detect"
