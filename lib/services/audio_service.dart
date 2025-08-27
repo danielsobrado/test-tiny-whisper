@@ -3,6 +3,8 @@ import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:permission_handler/permission_handler.dart';
+import '../config/app_constants.dart';
+import '../utils/app_logger.dart';
 
 class AudioService {
   final AudioRecorder _recorder = AudioRecorder();
@@ -41,7 +43,7 @@ class AudioService {
 
       // Generate unique filename
       final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-      final String fileName = 'recording_$timestamp.wav';
+      final String fileName = '${AppConstants.tempRecordingPrefix}$timestamp${AppConstants.recordingFileExtension}';
       _currentRecordingPath = path.join(audioDir, fileName);
 
       // Configure recording settings for Whisper compatibility
@@ -116,7 +118,7 @@ class AudioService {
       }
     } catch (e) {
       // Log error but don't throw - cleanup should be resilient
-      print('Error during recording cleanup: $e');
+      AppLogger.error('Error during recording cleanup', error: e);
     }
   }
 
@@ -150,7 +152,7 @@ class AudioService {
         await audioDirPath.delete(recursive: true);
       }
     } catch (e) {
-      print('Error clearing recording history: $e');
+      AppLogger.error('Error clearing recording history', error: e);
     }
   }
 

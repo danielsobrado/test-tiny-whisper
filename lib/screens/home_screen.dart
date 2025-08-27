@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path/path.dart' as path;
+import '../config/app_constants.dart';
+import '../utils/app_logger.dart';
 import '../services/audio_service.dart';
 import '../services/whisper_service.dart';
 import '../widgets/model_download_widget.dart';
@@ -28,17 +30,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   String? _selectedLanguage;
   bool _isRecording = false;
   final bool _isTranscribing = false;
-  double _currentSoundLevel = 0.0;
+  double _currentSoundLevel = AppConstants.defaultSoundLevel;
   List<String> _supportedLanguages = [];
   final GlobalKey _downloadWidgetKey = GlobalKey();
   
   late TabController _tabController;
-  int _currentTabIndex = 0;
+  int _currentTabIndex = AppConstants.initialTabIndex;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: AppConstants.maxTabCount, vsync: this);
     _tabController.addListener(() {
       setState(() {
         _currentTabIndex = _tabController.index;
@@ -56,13 +58,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
   
   Future<void> _loadSupportedLanguages() async {
+    AppLogger.logMethodEntry('HomeScreen', '_loadSupportedLanguages');
     try {
       final languages = await _whisperService.getSupportedLanguages();
       setState(() {
         _supportedLanguages = languages;
       });
+      AppLogger.uiInfo('Loaded ${languages.length} supported languages');
+      AppLogger.logMethodExit('HomeScreen', '_loadSupportedLanguages', result: 'Success');
     } catch (e) {
-      print('Failed to load supported languages: $e');
+      AppLogger.uiError('Failed to load supported languages', error: e);
     }
   }
 
@@ -75,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (permissions[Permission.microphone]?.isDenied == true) {
       _showPermissionDialog(
         'Microphone Permission Required',
-        'This app needs microphone access to record your voice for speech recognition.',
+        AppConstants.ErrorMessages.microphonePermissionRequired,
         Permission.microphone,
       );
     }
@@ -83,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (permissions[Permission.storage]?.isDenied == true) {
       _showPermissionDialog(
         'Storage Permission Required',
-        'This app needs storage access to download and manage speech recognition models.',
+        AppConstants.ErrorMessages.storagePermissionRequired,
         Permission.storage,
       );
     }
@@ -145,7 +150,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     setState(() {
       _modelToReplace = modelPath;
     });
-    _showSnackBar('Replace mode activated. Download a new model to replace the selected one.');
+    _showSnackBar(AppConstants.SuccessMessages.replaceModeActivated);
   }
   
   void _onModelReplaced() {
@@ -159,7 +164,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (!micStatus.isGranted) {
       _showPermissionDialog(
         'Microphone Permission Required',
-        'Please grant microphone permission to use speech recognition.',
+        AppConstants.ErrorMessages.microphonePermissionRequired,
         Permission.microphone,
       );
       return;
@@ -171,12 +176,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     });
 
     try {
-      print('Starting speech recognition from UI...');
+      AppLogger.uiInfo('Starting speech recognition from UI...');
       
       final transcription = await _whisperService.startLiveSpeechRecognition(
         language: _selectedLanguage,
         onResult: (text) {
-          print('Home screen received transcription: "$text"');
+          AppLogger.uiInfo('Home screen received transcription: "$text"');
           if (text.isNotEmpty) {
             setState(() {
               _transcriptionText = text;
@@ -184,27 +189,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           }
         },
         onSoundLevelChange: (level) {
-          print('Home screen received sound level: $level');
+          if (AppConstants.Logging.enableDebugLogs) {
+            AppLogger.uiInfo('Home screen received sound level: $level');
+          }
           setState(() {
             _currentSoundLevel = level;
           });
         },
         onListeningStopped: () {
-          print('Speech recognition stopped from callback');
+          AppLogger.uiInfo('Speech recognition stopped from callback');
           setState(() {
             _isRecording = false;
-            _currentSoundLevel = 0.0;
+            _currentSoundLevel = AppConstants.defaultSoundLevel;
           });
-          _showSnackBar('Listening stopped. Tap Start to continue.');
+          _showSnackBar(AppConstants.SuccessMessages.listeningStopped);
         },
       );
       
-      print('Speech recognition started successfully');
-      _showSnackBar('Speech recognition started. Start speaking...');
+      AppLogger.uiInfo('Speech recognition started successfully');
+      _showSnackBar(AppConstants.SuccessMessages.speechRecognitionStarted);
       
     } catch (e) {
-      print('Error starting speech recognition: $e');
-      _showSnackBar('Failed to start speech recognition: $e\n\nEnsure Google Speech Services is enabled on your device.');
+      AppLogger.uiError('Error starting speech recognition', error: e);
+      _showSnackBar('${AppConstants.ErrorMessages.speechRecognitionFailed}: $e\n\nEnsure Google Speech Services is enabled on your device.');
       setState(() {
         _isRecording = false;
       });
@@ -214,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Future<void> _stopRecording() async {
     setState(() {
       _isRecording = false;
-      _currentSoundLevel = 0.0;
+      _currentSoundLevel = AppConstants.defaultSoundLevel;
     });
 
     try {

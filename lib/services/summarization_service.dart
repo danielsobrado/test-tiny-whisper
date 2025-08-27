@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as path;
+import '../config/app_constants.dart';
+import '../utils/app_logger.dart';
 
 /// Model information for available Gemma models
 class ModelInfo {
@@ -153,7 +155,7 @@ class SummarizationService {
 
   Future<void> initialize() async {
     _isInitialized = true;
-    print('Summarization service initialized');
+    AppLogger.summarizationInfo('Summarization service initialized');
   }
 
   /// Get the models directory path
@@ -203,7 +205,7 @@ class SummarizationService {
       
       return downloadedModels;
     } catch (e) {
-      print('Error getting downloaded models: $e');
+      AppLogger.summarizationError('Error getting downloaded models', error: e);
       return [];
     }
   }
@@ -224,8 +226,8 @@ class SummarizationService {
         await modelFile.delete();
       }
 
-      print('Downloading ${modelInfo.name} from ${modelInfo.url}');
-      print('Saving to: $modelPath');
+      AppLogger.summarizationInfo('Downloading ${modelInfo.name} from ${modelInfo.url}');
+      AppLogger.summarizationInfo('Saving to: $modelPath');
 
       // Download with progress tracking
       final response = await _dio.download(
@@ -235,7 +237,7 @@ class SummarizationService {
           if (total > 0 && onProgress != null) {
             final progress = received / total;
             onProgress(progress);
-            print('Download progress: ${(progress * 100).toStringAsFixed(1)}%');
+            AppLogger.logProgress('Model download', progress, details: 'Downloading ${modelInfo.name}');
           }
         },
         options: Options(
@@ -249,14 +251,14 @@ class SummarizationService {
 
       if (response.statusCode == 200) {
         final fileSize = await modelFile.length();
-        print('Successfully downloaded ${modelInfo.name} ($fileSize bytes)');
+        AppLogger.summarizationInfo('Successfully downloaded ${modelInfo.name} ($fileSize bytes)');
         return true;
       } else {
-        print('Download failed with status code: ${response.statusCode}');
+        AppLogger.summarizationError('Download failed with status code: ${response.statusCode}');
         return false;
       }
     } catch (e) {
-      print('Error downloading model $modelKey: $e');
+      AppLogger.summarizationError('Error downloading model $modelKey', error: e);
       return false;
     }
   }
@@ -276,14 +278,14 @@ class SummarizationService {
           _currentModelPath = null;
         }
         
-        print('Deleted model: $modelKey');
+        AppLogger.summarizationInfo('Deleted model: $modelKey');
         return true;
       } else {
-        print('Model file not found: $modelPath');
+        AppLogger.summarizationInfo('Model file not found: $modelPath');
         return false;
       }
     } catch (e) {
-      print('Error deleting model $modelKey: $e');
+      AppLogger.summarizationError('Error deleting model $modelKey', error: e);
       return false;
     }
   }
@@ -304,11 +306,11 @@ class SummarizationService {
       _currentModelPath = modelPath;
       
       final modelInfo = availableModels[modelKey];
-      print('Loaded model: ${modelInfo?.name} ($modelPath)');
+      AppLogger.summarizationInfo('Loaded model: ${modelInfo?.name} ($modelPath)');
       return true;
       
     } catch (e) {
-      print('Error loading model $modelKey: $e');
+      AppLogger.summarizationError('Error loading model $modelKey', error: e);
       return false;
     }
   }
@@ -343,7 +345,7 @@ class SummarizationService {
   void selectPrompt(String promptKey) {
     if (availablePrompts.containsKey(promptKey)) {
       _selectedPromptKey = promptKey;
-      print('Selected prompt style: ${availablePrompts[promptKey]?.name}');
+      AppLogger.summarizationInfo('Selected prompt style: ${availablePrompts[promptKey]?.name}');
     }
   }
 
@@ -382,12 +384,12 @@ class SummarizationService {
       // In a complete implementation, this would use the loaded Gemma model for actual AI inference
       final modelInfo = availableModels[_currentModelKey];
       final promptInfo = availablePrompts[_selectedPromptKey];
-      print('Summarizing with ${modelInfo?.name ?? _currentModelKey} using ${promptInfo?.name ?? 'default'} style...');
+      AppLogger.summarizationInfo('Summarizing with ${modelInfo?.name ?? _currentModelKey} using ${promptInfo?.name ?? 'default'} style...');
       
       return _aiEnhancedSummarization(text, maxLength);
       
     } catch (e) {
-      print('Error during summarization: $e');
+      AppLogger.summarizationError('Error during summarization', error: e);
       return _ruleBasedSummarization(text, maxLength);
     }
   }

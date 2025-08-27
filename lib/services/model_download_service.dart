@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import '../config/app_constants.dart';
+import '../utils/app_logger.dart';
 // import 'pytorch_model_downloader.dart';  // Temporarily disabled for Android build
 
 class ModelDownloadService {
@@ -37,7 +39,7 @@ class ModelDownloadService {
       if (replaceModelPath != null) {
         // Replace existing model
         filePath = replaceModelPath;
-        onProgress(0.0, 'Replacing existing model...');
+        onProgress(AppConstants.progressStart, 'Replacing existing model...');
       } else {
         // Extract filename from URL
         final Uri uri = Uri.parse(url);
@@ -47,9 +49,9 @@ class ModelDownloadService {
         if (!fileName.contains('.')) {
           // Check if URL suggests GGUF format
           if (url.toLowerCase().contains('gguf')) {
-            fileName = '$fileName.gguf';
+            fileName = '$fileName${AppConstants.ggufExtension}';
           } else {
-            fileName = '$fileName.bin'; // Default to GGML format
+            fileName = '$fileName${AppConstants.ggmlExtension}'; // Default to GGML format
           }
         }
 
@@ -59,7 +61,7 @@ class ModelDownloadService {
         if (existingModel != null) {
           // Ask to replace or create new
           filePath = existingModel;
-          onProgress(0.0, 'Replacing existing model with same name...');
+          onProgress(AppConstants.progressStart, 'Replacing existing model with same name...');
         } else {
           // Generate unique filename to avoid conflicts
           final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
@@ -68,7 +70,7 @@ class ModelDownloadService {
         }
       }
 
-      onProgress(0.0, 'Connecting to server...');
+      onProgress(AppConstants.progressStart, 'Connecting to server...');
 
       // Download with progress tracking
       await _dio.download(
@@ -77,22 +79,22 @@ class ModelDownloadService {
         onReceiveProgress: (received, total) {
           if (total != -1) {
             final progress = received / total;
-            final receivedMB = (received / (1024 * 1024)).toStringAsFixed(1);
-            final totalMB = (total / (1024 * 1024)).toStringAsFixed(1);
+            final receivedMB = (received / AppConstants.bytesPerMB).toStringAsFixed(1);
+            final totalMB = (total / AppConstants.bytesPerMB).toStringAsFixed(1);
             onProgress(
               progress,
               'Downloading: ${receivedMB}MB / ${totalMB}MB (${(progress * 100).toStringAsFixed(1)}%)',
             );
           } else {
-            final receivedMB = (received / (1024 * 1024)).toStringAsFixed(1);
-            onProgress(0.0, 'Downloaded: ${receivedMB}MB');
+            final receivedMB = (received / AppConstants.bytesPerMB).toStringAsFixed(1);
+            onProgress(AppConstants.progressStart, 'Downloaded: ${receivedMB}MB');
           }
         },
         options: Options(
           followRedirects: true,
           maxRedirects: 5,
-          receiveTimeout: const Duration(minutes: 30),
-          sendTimeout: const Duration(minutes: 5),
+          receiveTimeout: AppConstants.networkReceiveTimeout,
+          sendTimeout: AppConstants.networkSendTimeout,
         ),
       );
 

@@ -1,12 +1,16 @@
 import 'package:google_mlkit_language_id/google_mlkit_language_id.dart';
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
+import '../config/app_constants.dart';
+import '../utils/app_logger.dart';
 
 /// Service for offline language detection and translation
 class TranslationService {
-  static const String _defaultTargetLanguage = 'en'; // English as default target
+  static const String _defaultTargetLanguage = AppConstants.defaultTargetLanguage;
   
   OnDeviceTranslator? _currentTranslator;
-  final LanguageIdentifier _languageIdentifier = LanguageIdentifier(confidenceThreshold: 0.5);
+  final LanguageIdentifier _languageIdentifier = LanguageIdentifier(
+    confidenceThreshold: AppConstants.languageDetectionConfidenceThreshold
+  );
   final OnDeviceTranslatorModelManager _modelManager = OnDeviceTranslatorModelManager();
   
   /// Initialize the translation service
@@ -28,7 +32,7 @@ class TranslationService {
       
       return language;
     } catch (e) {
-      print('Error detecting language: $e');
+      AppLogger.translationError('Error detecting language', error: e);
       return null;
     }
   }
@@ -38,7 +42,7 @@ class TranslationService {
     try {
       return await _modelManager.isModelDownloaded(languageCode);
     } catch (e) {
-      print('Error checking if model is downloaded: $e');
+      AppLogger.translationError('Error checking if model is downloaded', error: e);
       return false;
     }
   }
@@ -49,7 +53,7 @@ class TranslationService {
       await _modelManager.downloadModel(languageCode);
       return true;
     } catch (e) {
-      print('Error downloading model for $languageCode: $e');
+      AppLogger.translationError('Error downloading model for $languageCode', error: e);
       return false;
     }
   }
@@ -60,7 +64,7 @@ class TranslationService {
       await _modelManager.deleteModel(languageCode);
       return true;
     } catch (e) {
-      print('Error deleting model for $languageCode: $e');
+      AppLogger.translationError('Error deleting model for $languageCode', error: e);
       return false;
     }
   }
@@ -86,7 +90,7 @@ class TranslationService {
       
       return downloadedModels;
     } catch (e) {
-      print('Error getting downloaded models: $e');
+      AppLogger.translationError('Error getting downloaded models', error: e);
       return {};
     }
   }
@@ -113,7 +117,7 @@ class TranslationService {
         final targetTranslateLanguage = _getTranslateLanguageFromCode(targetLanguage);
         
         if (sourceTranslateLanguage == null || targetTranslateLanguage == null) {
-          print('Unsupported language pair: $sourceLanguage -> $targetLanguage');
+          AppLogger.translationError('Unsupported language pair: $sourceLanguage -> $targetLanguage');
           return null;
         }
         
@@ -124,7 +128,7 @@ class TranslationService {
         if (!sourceDownloaded) {
           final downloaded = await downloadModel(sourceLanguage);
           if (!downloaded) {
-            print('Failed to download source model: $sourceLanguage');
+            AppLogger.translationError('Failed to download source model: $sourceLanguage');
             return null;
           }
         }
@@ -132,7 +136,7 @@ class TranslationService {
         if (!targetDownloaded) {
           final downloaded = await downloadModel(targetLanguage);
           if (!downloaded) {
-            print('Failed to download target model: $targetLanguage');
+            AppLogger.translationError('Failed to download target model: $targetLanguage');
             return null;
           }
         }
@@ -146,7 +150,7 @@ class TranslationService {
       final translatedText = await _currentTranslator!.translateText(text);
       return translatedText;
     } catch (e) {
-      print('Error translating text: $e');
+      AppLogger.translationError('Error translating text', error: e);
       return null;
     }
   }
@@ -206,7 +210,7 @@ class TranslationService {
         needsTranslation: true,
       );
     } catch (e) {
-      print('Error in detectAndTranslate: $e');
+      AppLogger.translationError('Error in detectAndTranslate', error: e);
       // On error, assume English and don't translate
       return TranslationResult(
         originalText: text,

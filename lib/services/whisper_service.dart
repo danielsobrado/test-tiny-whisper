@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart';
+import '../config/app_constants.dart';
+import '../utils/app_logger.dart';
 
 class WhisperService {
   final SpeechToText _speechToText = SpeechToText();
@@ -11,28 +13,35 @@ class WhisperService {
   List<String> _availableLanguages = [];
 
   Future<void> loadModel(String modelPath) async {
+    AppLogger.logMethodEntry('WhisperService', 'loadModel', parameters: {'modelPath': modelPath});
+    
     try {
       final File modelFile = File(modelPath);
       if (!await modelFile.exists()) {
-        throw Exception('Model file not found: $modelPath');
+        final error = '${AppConstants.ErrorMessages.modelNotFound}: $modelPath';
+        AppLogger.modelError(error);
+        throw Exception(error);
       }
 
       if (_isPyTorchModel(modelPath)) {
-        // PyTorch models temporarily disabled for Android build
-        throw Exception('PyTorch models temporarily disabled. Use ONNX (.onnx) models for offline recognition.');
+        final error = AppConstants.ErrorMessages.pytorchDisabled;
+        AppLogger.modelError(error);
+        throw Exception(error);
       } else if (_isONNXModel(modelPath)) {
-        // Try to load ONNX model with sherpa_onnx
+        AppLogger.modelInfo('Attempting to load ONNX model: $modelPath');
         await _tryLoadONNXModel(modelPath);
       } else {
-        // For other model types, initialize live speech recognition
+        AppLogger.modelInfo('Loading model as reference for live speech recognition: $modelPath');
         await _initializeSpeechService();
         _isInitialized = true;
-        print('Model noted for reference. Using live speech recognition for: $modelPath');
+        AppLogger.modelInfo('Model noted for reference. Using live speech recognition for: $modelPath');
       }
       
       _currentModelPath = modelPath;
+      AppLogger.logMethodExit('WhisperService', 'loadModel', result: 'Success');
       
     } catch (e) {
+      AppLogger.modelError('Failed to load model', error: e);
       throw Exception('Failed to load model: $e');
     }
   }
@@ -58,17 +67,18 @@ class WhisperService {
       }
 
       if (_isPyTorchModel(modelPath)) {
-        // PyTorch models temporarily disabled for Android build
-        throw Exception('PyTorch models temporarily disabled. Use GGML (.bin) or GGUF (.gguf) models instead.');
+        final error = AppConstants.ErrorMessages.pytorchDisabled.replaceAll('ONNX (.onnx)', 'GGML (.bin) or GGUF (.gguf)');
+        AppLogger.modelError(error);
+        throw Exception(error);
       } else {
-        // Use whisper_ggml for GGML/GGUF models
         if (!_isInitialized) {
-          throw Exception('Speech recognition not initialized');
+          final error = 'Speech recognition not initialized';
+          AppLogger.speechError(error);
+          throw Exception(error);
         }
 
-        // Check if this is a GGUF model and warn about compatibility
         if (_isGGUFModel(modelPath)) {
-          print('Warning: GGUF model detected. whisper_ggml may not fully support GGUF format yet.');
+          AppLogger.modelWarning('GGUF model detected. whisper_ggml may not fully support GGUF format yet.');
         }
 
         // Use appropriate transcription method based on model type
@@ -104,20 +114,28 @@ class WhisperService {
   }
 
   Future<void> _initializeSpeechService() async {
+    AppLogger.logMethodEntry('WhisperService', '_initializeSpeechService');
+    
     try {
-      print('Initializing speech recognition service...');
+      AppLogger.speechInfo('Initializing speech recognition service...');
       
-      // Initialize speech recognition
+      final stopwatch = Stopwatch()..start();
+      
       bool available = await _speechToText.initialize(
-        onError: (error) => print('Speech recognition error: $error'),
-        onStatus: (status) => print('Speech recognition status: $status'),
-        debugLogging: true, // Enable debug logging
+        onError: (error) => AppLogger.speechError('Speech recognition error: $error'),
+        onStatus: (status) => AppLogger.speechInfo('Speech recognition status: $status'),
+        debugLogging: AppConstants.Logging.enableDebugLogs,
       );
       
-      print('Speech recognition available: $available');
+      stopwatch.stop();
+      AppLogger.performanceInfo('Speech recognition initialization', stopwatch.elapsed);
+      
+      AppLogger.speechInfo('Speech recognition available: $available');
       
       if (!available) {
-        throw Exception('Speech recognition not available on this device');
+        final error = 'Speech recognition not available on this device';
+        AppLogger.speechError(error);
+        throw Exception(error);
       }
       
       // Get available languages
@@ -125,10 +143,11 @@ class WhisperService {
           .then((locales) => locales.map((locale) => locale.localeId).toList());
       
       _isInitialized = true;
-      print('Speech recognition initialized with ${_availableLanguages.length} languages');
-      print('Available languages: $_availableLanguages');
+      AppLogger.speechInfo('Speech recognition initialized with ${_availableLanguages.length} languages');
+      AppLogger.speechInfo('Available languages: $_availableLanguages');
+      AppLogger.logMethodExit('WhisperService', '_initializeSpeechService', result: 'Success');
     } catch (e) {
-      print('Failed to initialize speech recognition: $e');
+      AppLogger.speechError('Failed to initialize speech recognition', error: e);
       throw Exception('Failed to initialize speech recognition: $e');
     }
   }
@@ -143,7 +162,7 @@ class WhisperService {
       // For file-based transcription, we'll need a different approach
       // This is a limitation of the current implementation
       
-      return 'Speech-to-text requires live audio input. File-based transcription is not supported with this implementation. Please use the microphone recording feature instead.';
+      return AppConstants.ErrorMessages.fileTranscriptionNotSupported;
       
     } catch (e) {
       throw Exception('Transcription failed: $e');
@@ -158,7 +177,8 @@ class WhisperService {
 
       // Read and process audio file with sherpa_onnx
       // This is a placeholder implementation
-      print('Processing audio file with offline model: $audioPath');
+      
+      AppLogger.modelInfo('Processing audio file with offline model: $audioPath');
       
       // In a complete implementation, you would:
       // 1. Read the WAV file using sherpa_onnx.readWave()
@@ -167,7 +187,7 @@ class WhisperService {
       // 4. Decode and get results
       
       // For now, return a message explaining the limitation
-      return 'Offline model transcription not fully implemented. This requires proper ONNX model files (encoder.onnx, decoder.onnx, tokens.txt). Please use live speech recognition instead.';
+      return AppConstants.ErrorMessages.offlineTranscriptionNotImplemented;
       
     } catch (e) {
       throw Exception('Offline transcription failed: $e');
@@ -180,50 +200,55 @@ class WhisperService {
     Function(double)? onSoundLevelChange,
     Function()? onListeningStopped,
   }) async {
+    AppLogger.logMethodEntry('WhisperService', 'startLiveSpeechRecognition', parameters: {'language': language});
+    
     try {
-      print('Starting live speech recognition...');
-      print('Language: $language');
+      AppLogger.speechInfo('Starting live speech recognition...');
+      AppLogger.speechInfo('Language: ${language ?? 'auto-detect'}');
       
       if (!_isInitialized) {
-        print('Speech service not initialized, initializing now...');
+        AppLogger.speechInfo('Speech service not initialized, initializing now...');
         await _initializeSpeechService();
       }
       
-      print('Starting to listen...');
+      AppLogger.speechInfo('Starting to listen...');
       
       // Start listening with real-time results - continuous until stopped
       await _speechToText.listen(
         onResult: (result) {
-          print('Speech result received: "${result.recognizedWords}"');
-          print('Result confidence: ${result.confidence}');
-          print('Is final result: ${result.finalResult}');
+          AppLogger.speechInfo('Speech result received: "${result.recognizedWords}"');
+          AppLogger.speechInfo('Result confidence: ${result.confidence}');
+          AppLogger.speechInfo('Is final result: ${result.finalResult}');
           
           onResult(result.recognizedWords);
           
           // If result is final and we're not listening anymore, notify
           if (result.finalResult && !_speechToText.isListening) {
-            print('Listening stopped - final result received');
+            AppLogger.speechInfo('Listening stopped - final result received');
             onListeningStopped?.call();
           }
         },
         localeId: language,
-        listenFor: const Duration(minutes: 10), // Very long duration - effectively continuous
-        pauseFor: const Duration(seconds: 30), // Very long pause tolerance for continuous listening
+        listenFor: AppConstants.speechListenDuration,
+        pauseFor: AppConstants.speechPauseDuration,
         partialResults: true, // Show results as they come in
         cancelOnError: true, // Handle errors gracefully
         onSoundLevelChange: (level) {
           // Pass sound level to callback for audio visualization
-          print('Sound level received: $level'); // Debug logging
+          if (AppConstants.Logging.enableSpeechLogs) {
+            AppLogger.speechInfo('Sound level received: $level');
+          }
           onSoundLevelChange?.call(level);
         },
       );
       
-      print('Listen call completed');
-      return 'Speech recognition started';
+      AppLogger.speechInfo('Listen call completed');
+      AppLogger.logMethodExit('WhisperService', 'startLiveSpeechRecognition', result: 'Success');
+      return AppConstants.SuccessMessages.speechRecognitionStarted;
       
     } catch (e) {
-      print('Error starting speech recognition: $e');
-      throw Exception('Failed to start live speech recognition: $e');
+      AppLogger.speechError('Error starting speech recognition', error: e);
+      throw Exception('${AppConstants.ErrorMessages.speechRecognitionFailed}: $e');
     }
   }
 
@@ -257,7 +282,7 @@ class WhisperService {
       throw Exception('ONNX model loading not fully implemented. ONNX models require encoder.onnx, decoder.onnx, and tokens.txt files. Falling back to live speech recognition.');
       
     } catch (e) {
-      print('Failed to load ONNX model, using live speech recognition: $e');
+      AppLogger.modelError('Failed to load ONNX model, using live speech recognition', error: e);
       await _initializeSpeechService();
       _isInitialized = true;
       _isOfflineModelLoaded = false;
@@ -269,17 +294,17 @@ class WhisperService {
   }
   
   bool _isGGUFModel(String modelPath) {
-    return modelPath.toLowerCase().endsWith('.gguf');
+    return modelPath.toLowerCase().endsWith(AppConstants.ggufExtension);
   }
 
   bool _isPyTorchModel(String modelPath) {
     final fileName = modelPath.split('/').last.toLowerCase();
-    return modelPath.toLowerCase().endsWith('.ptl') || 
-           fileName == 'pytorch_model.bin';
+    return modelPath.toLowerCase().endsWith(AppConstants.pytorchExtension) || 
+           fileName == AppConstants.pytorchModelFileName;
   }
   
   bool _isONNXModel(String modelPath) {
-    return modelPath.toLowerCase().endsWith('.onnx');
+    return modelPath.toLowerCase().endsWith(AppConstants.onnxExtension);
   }
 
   Future<List<String>> getSupportedLanguages() async {
@@ -292,9 +317,9 @@ class WhisperService {
   Future<Map<String, dynamic>> getModelInfo() async {
     if (_currentModelPath == null) {
       return {
-        'status': 'No model loaded',
-        'framework': 'Device speech recognition',
-        'offline_model_status': 'No offline model selected'
+        'status': AppConstants.StatusMessages.noModelLoaded,
+        'framework': AppConstants.StatusMessages.deviceSpeechRecognition,
+        'offline_model_status': AppConstants.StatusMessages.noOfflineModelSelected
       };
     }
 
@@ -310,18 +335,18 @@ class WhisperService {
     String mainStatus;
     
     if (!fileExists) {
-      actualFramework = 'Device speech recognition (model file not found)';
-      offlineStatus = 'Selected model file does not exist';
-      mainStatus = 'Model file missing - using device speech recognition';
+      actualFramework = AppConstants.StatusMessages.modelFileNotFound;
+      offlineStatus = AppConstants.StatusMessages.selectedModelNotExists;
+      mainStatus = AppConstants.StatusMessages.modelMissingFallback;
     } else if (_isOfflineModelLoaded && _offlineRecognizer != null) {
-      actualFramework = 'Offline model (sherpa_onnx)';
-      offlineStatus = 'Offline model loaded and active';
-      mainStatus = 'Using offline model for transcription';
+      actualFramework = AppConstants.StatusMessages.offlineModelActive;
+      offlineStatus = AppConstants.StatusMessages.offlineModelLoaded;
+      mainStatus = AppConstants.StatusMessages.usingOfflineModel;
     } else {
       // This is the current reality - model selected but not used
-      actualFramework = 'Device speech recognition (offline models not yet implemented)';
-      offlineStatus = 'Selected model not in use - offline processing not implemented';
-      mainStatus = 'Model selected but using device speech recognition';
+      actualFramework = AppConstants.StatusMessages.deviceFallbackNotImplemented;
+      offlineStatus = AppConstants.StatusMessages.selectedModelNotUsed;
+      mainStatus = AppConstants.StatusMessages.modelSelectedDeviceFallback;
     }
     
     return {
@@ -348,6 +373,8 @@ class WhisperService {
         return 'GGML';
       case 'ptl':
         return 'PyTorch';
+      case 'tflite':
+        return 'TensorFlow Lite';
       default:
         return 'Unknown';
     }
